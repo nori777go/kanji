@@ -14,7 +14,7 @@ import { GlobalHeader } from './components/Logo';
 
 function App() {
   const [mode, setMode] = useState<GameMode>(GameMode.USER_SELECT); 
-  const [prevMode, setPrevMode] = useState<GameMode | 'COLLECTION' | null>(null);
+  const [prevMode, setPrevMode] = useState<GameMode | null>(null);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [selectedGrade, setSelectedGrade] = useState(1);
   const [gameKanjiList, setGameKanjiList] = useState<KanjiData[]>([]);
@@ -73,13 +73,13 @@ function App() {
   };
 
   const showHowToPlay = () => {
-    setPrevMode(mode as any);
+    setPrevMode(mode);
     setMode(GameMode.HOW_TO_PLAY);
   };
 
   const handleHelpBack = () => {
     if (prevMode) {
-      setMode(prevMode as GameMode);
+      setMode(prevMode);
       setPrevMode(null);
     } else {
       setMode(GameMode.MENU);
@@ -124,7 +124,7 @@ function App() {
         if (userData) return <HistoryScreen userProgress={userData} onBack={handleBackToMenu} onShowHowToPlay={showHowToPlay} onLogoClick={goToHome} />;
         return <div onClick={handleBackToMenu}>Error</div>;
 
-      case 'COLLECTION' as any: 
+      case GameMode.COLLECTION:
          return (
             <CollectionScreen 
                 grade={selectedGrade}
@@ -156,7 +156,7 @@ function App() {
               
               {/* 1. Kanji List Button */}
               <button
-                  onClick={() => setMode('COLLECTION' as any)}
+                  onClick={() => setMode(GameMode.COLLECTION)}
                   className="w-full bg-white p-5 rounded-[2.5rem] border-4 border-brand-yellow shadow-[0_8px_0_#d69e2e] active:shadow-none active:translate-y-[8px] transition-all flex items-center gap-4 group shrink-0 relative overflow-hidden"
                 >
                   <div className="bg-brand-yellow/20 p-3 rounded-2xl group-hover:scale-110 transition-transform shrink-0">

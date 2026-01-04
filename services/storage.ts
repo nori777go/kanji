@@ -3,14 +3,21 @@ import { UserProgress, GameResult, KanjiData } from '../types';
 
 const STORAGE_KEY = 'pikapika_kanji_users';
 const LAST_USER_KEY = 'pikapika_kanji_last_user';
+const MAX_HISTORY_ENTRIES = 100;
 
 export const getAllUsers = (): Record<string, UserProgress> => {
   const data = localStorage.getItem(STORAGE_KEY);
   if (!data) return {};
   
-  const parsed = JSON.parse(data);
+  let parsed: Record<string, UserProgress>;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    return {};
+  }
   
   // Data Migration Logic
+  let isMigrated = false;
   Object.keys(parsed).forEach(key => {
       const user = parsed[key];
       
@@ -32,6 +39,7 @@ export const getAllUsers = (): Record<string, UserProgress> => {
 
           user.masteredReading = formattedMastered;
           user.masteredWriting = formattedMastered; // Copy to writing too
+          isMigrated = true;
       }
 
       // Same for weak kanji
@@ -48,15 +56,32 @@ export const getAllUsers = (): Record<string, UserProgress> => {
              : oldWeak;
           user.weakReading = formattedWeak;
           user.weakWriting = formattedWeak;
+          isMigrated = true;
       }
       
       // Ensure arrays exist
-      if (!user.masteredReading) user.masteredReading = [];
-      if (!user.masteredWriting) user.masteredWriting = [];
-      if (!user.weakReading) user.weakReading = [];
-      if (!user.weakWriting) user.weakWriting = [];
+      if (!user.masteredReading) {
+        user.masteredReading = [];
+        isMigrated = true;
+      }
+      if (!user.masteredWriting) {
+        user.masteredWriting = [];
+        isMigrated = true;
+      }
+      if (!user.weakReading) {
+        user.weakReading = [];
+        isMigrated = true;
+      }
+      if (!user.weakWriting) {
+        user.weakWriting = [];
+        isMigrated = true;
+      }
   });
   
+  if (isMigrated) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+  }
+
   return parsed;
 };
 
@@ -88,6 +113,9 @@ export const saveGameResult = (username: string, result: GameResult): UserProgre
     total: result.total,
     mode: result.mode
   });
+  if (currentProgress.history.length > MAX_HISTORY_ENTRIES) {
+    currentProgress.history = currentProgress.history.slice(-MAX_HISTORY_ENTRIES);
+  }
 
   // Determine which arrays to update based on game mode
   const targetMastered = result.mode === 'READING' ? 'masteredReading' : 'masteredWriting';
