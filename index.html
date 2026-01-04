@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ja" style="color-scheme: light !important; background-color: #FFF5E4 !important;">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="supported-color-schemes" content="light">
+    <title>ピカピカかんじ | PikaPika Kanji</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FFD93D">
+    
+    <!-- iOS Appearance -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="ピカピカかんじ">
+    
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23FFD93D'/><path d='M50 15 C54 42 58 46 85 50 C58 54 54 58 50 85 C46 58 42 54 15 50 C42 46 46 42 50 15 Z' fill='white'/></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='50' fill='%23FFD93D'/><path d='M50 15 C54 42 58 46 85 50 C58 54 54 58 50 85 C46 58 42 54 15 50 C42 46 46 42 50 15 Z' fill='white'/></svg>">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Zen Maru Gothic"', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                yellow: '#FFD93D',
+                orange: '#FF8400',
+                blue: '#4F95FF',
+                green: '#6BCB77',
+                pink: '#FF6B6B',
+                cream: '#FFF5E4'
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      :root {
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      html, body {
+        color-scheme: light !important;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #FFF5E4 !important;
+        -webkit-tap-highlight-color: transparent;
+      }
+      #root {
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background-color: #FFF5E4 !important;
+      }
+      
+      /* 安全な余白確保（アプリとウェブ両対応） */
+      .ios-padding-top {
+        padding-top: max(12px, var(--safe-top));
+      }
+      .ios-padding-bottom {
+        padding-bottom: max(12px, var(--safe-bottom));
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+      @keyframes dash-move { to { stroke-dashoffset: -24; } }
+      .animate-dash-move { animation: dash-move 1s linear infinite; }
+      @keyframes highlight-pulse {
+        0% { box-shadow: 0 0 0 0 rgba(107, 203, 119, 0.4); transform: scale(1); }
+        50% { box-shadow: 0 0 0 15px rgba(107, 203, 119, 0); transform: scale(1.02); }
+        100% { box-shadow: 0 0 0 0 rgba(107, 203, 119, 0); transform: scale(1); }
+      }
+      .animate-highlight-pulse { animation: highlight-pulse 2s infinite ease-in-out; }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom": "https://esm.sh/react-dom@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "lucide-react": "https://esm.sh/lucide-react@0.263.1",
+    "@google/genai": "https://esm.sh/@google/genai@0.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
