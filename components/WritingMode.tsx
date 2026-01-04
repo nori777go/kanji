@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { KanjiData, GameResult } from '../types';
-import { fetchKanji, evaluateHandwriting, fetchKanjiDetails } from '../services/geminiService';
+import { fetchKanji, evaluateHandwriting } from '../services/geminiService';
 import DrawingCanvas from './DrawingCanvas';
 import { ArrowRight, Star, PenTool, CheckCircle, Eraser, HelpCircle, ArrowLeft } from 'lucide-react';
 import ResultScreen from './ResultScreen';
@@ -16,6 +16,7 @@ interface WritingModeProps {
   onBack: () => void;
   onShowHowToPlay: () => void;
   onLogoClick: () => void;
+  onStepChange?: () => void;
 }
 
 const Confetti: React.FC = () => {
@@ -38,7 +39,7 @@ const Confetti: React.FC = () => {
   );
 };
 
-const WritingMode: React.FC<WritingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick }) => {
+const WritingMode: React.FC<WritingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick, onStepChange }) => {
   const [kanjiList, setKanjiList] = useState<KanjiData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -67,29 +68,14 @@ const WritingMode: React.FC<WritingModeProps> = ({ currentUser, initialKanji, ex
     setIsFinished(false);
     setShowConfetti(false);
 
-    let data: KanjiData[] = [];
-
-    // データ修復ロジック：
-    // プレビュー環境などでAPIが失敗し、中身が空のデータが渡されることがあるため、
-    // 読み仮名がない場合は再度詳細取得（モックデータ利用）を試みる。
     if (initialKanji && initialKanji.length > 0) {
-         const needsRepair = initialKanji.some(k => 
-            (!k.onyomi || k.onyomi.length === 0) && (!k.kunyomi || k.kunyomi.length === 0)
-        );
-
-        if (needsRepair) {
-            console.log("Empty data detected in Writing Mode. Repairing...");
-            const chars = initialKanji.map(k => k.character);
-            data = await fetchKanjiDetails(chars);
-        } else {
-            data = initialKanji;
-        }
+        setKanjiList(initialKanji);
+        setLoading(false);
     } else {
-        data = await fetchKanji(5, excludeKanji, grade);
+        const data = await fetchKanji(5, excludeKanji, grade);
+        setKanjiList(data);
+        setLoading(false);
     }
-    
-    setKanjiList(data);
-    setLoading(false);
   };
 
   const handleClear = () => {
@@ -126,6 +112,7 @@ const WritingMode: React.FC<WritingModeProps> = ({ currentUser, initialKanji, ex
   };
 
   const handleNext = () => {
+    if (onStepChange) onStepChange();
     if (currentIndex < kanjiList.length - 1) {
         setCurrentIndex(prev => prev + 1);
         setResult(null);

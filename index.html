@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja" style="color-scheme: light !important; background-color: #FFF5E4 !important;">
   <head>
@@ -6,6 +7,9 @@
     <meta name="supported-color-schemes" content="light">
     <title>ピカピカかんじ | PikaPika Kanji</title>
     
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3688954659030805" crossorigin="anonymous"></script>
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#FFD93D">
@@ -20,10 +24,6 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;700;900&display=swap" rel="stylesheet">
-    
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3688954659030805" crossorigin="anonymous"></script>
-
     <script>
       tailwind.config = {
         theme: {
@@ -46,12 +46,15 @@
       }
     </script>
     <style>
-      :root {
-        --safe-top: env(safe-area-inset-top, 0px);
-        --safe-bottom: env(safe-area-inset-bottom, 0px);
+      @media (prefers-color-scheme: dark) {
+        body, #root, footer, div, h1, button, main {
+          background-color: inherit;
+          color: inherit;
+        }
       }
       html, body {
         color-scheme: light !important;
+        position: fixed;
         width: 100%;
         height: 100%;
         margin: 0;
@@ -59,27 +62,19 @@
         overflow: hidden;
         background-color: #FFF5E4 !important;
         -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
       }
       #root {
         width: 100%;
-        height: 100vh;
         height: 100dvh;
         display: flex;
         flex-direction: column;
         overflow: hidden;
-        background-color: #FFF5E4 !important;
         position: relative;
-        z-index: 1;
+        background-color: #FFF5E4 !important;
       }
-      
-      /* 安全な余白確保（アプリとウェブ両対応） */
-      .ios-padding-top {
-        padding-top: max(12px, var(--safe-top));
-      }
-      .ios-padding-bottom {
-        padding-bottom: max(12px, var(--safe-bottom));
-      }
-      
+      .safe-top { padding-top: env(safe-area-inset-top); }
+      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
       @keyframes fadeIn {
         from { opacity: 0; transform: translateY(10px); }
         to { opacity: 1; transform: translateY(0); }
@@ -93,57 +88,33 @@
         100% { box-shadow: 0 0 0 0 rgba(107, 203, 119, 0); transform: scale(1); }
       }
       .animate-highlight-pulse { animation: highlight-pulse 2s infinite ease-in-out; }
-      
-      @keyframes spin-slow {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
+      @keyframes confetti-fall {
+        0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) translateX(20vw) rotate(720deg); opacity: 0; }
+      }
+      .confetti {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        top: -20px;
+        z-index: 100;
+        pointer-events: none;
+        animation: confetti-fall 3s linear forwards;
       }
     </style>
-    <script type="importmap">
+  <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@18.2.0",
-    "react/": "https://esm.sh/react@18.2.0/",
-    "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "react-dom/": "https://esm.sh/react-dom@18.2.0/",
-    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-    "lucide-react": "https://esm.sh/lucide-react@0.263.1?deps=react@18.2.0,react-dom@18.2.0",
-    "@google/genai": "https://esm.sh/@google/genai@0.1.1"
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.554.0"
   }
 }
 </script>
-  </head>
+</head>
   <body>
-    <div id="root">
-        <!-- 初期ロード画面: ID 'initial-loader' は index.tsx でチェックされる -->
-        <div id="initial-loader" style="width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #FFF5E4;">
-            <div style="width: 80px; height: 80px; position: relative;">
-                 <svg viewBox="0 0 100 100" style="width: 100%; height: 100%; animation: spin-slow 3s linear infinite;">
-                    <circle cx="50" cy="50" r="45" stroke="#FFD93D" stroke-width="8" fill="none" stroke-dasharray="20 10"></circle>
-                 </svg>
-                 <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 24px;">✨</div>
-            </div>
-            <p style="margin-top: 20px; font-family: 'Zen Maru Gothic', sans-serif; font-weight: bold; color: #FF8400; animation: fadeIn 1s infinite alternate;">
-                じゅんび中...
-            </p>
-        </div>
-    </div>
-    <!-- Global Error Handler for Startup Issues -->
-    <script>
-      window.addEventListener('error', function(event) {
-        const root = document.getElementById('root');
-        if (root) {
-          // すでにReactがマウントされていたら上書きしない
-          if (!document.getElementById('initial-loader') && root.innerHTML.length > 500) return;
-          
-          root.innerHTML = '<div style="padding: 20px; color: #FF8400; text-align: center; font-family: sans-serif; margin-top: 50px; z-index: 9999; position: relative;">' +
-            '<h1>読み込みエラー</h1>' +
-            '<p>アプリを起動できませんでした。</p>' +
-            '<p style="font-size: 10px; color: #666; margin-top: 10px; word-break: break-all;">' + event.message + '</p>' +
-            '</div>';
-        }
-      });
-    </script>
-    <script type="module" src="./index.tsx"></script>
+    <div id="root"></div>
   </body>
 </html>

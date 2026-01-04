@@ -8,15 +8,7 @@ export const getAllUsers = (): Record<string, UserProgress> => {
   const data = localStorage.getItem(STORAGE_KEY);
   if (!data) return {};
   
-  let parsed: Record<string, UserProgress>;
-  try {
-    parsed = JSON.parse(data);
-  } catch (error) {
-    console.error("Storage data corrupted, initializing new storage.", error);
-    return {};
-  }
-  
-  let hasChanges = false;
+  const parsed = JSON.parse(data);
   
   // Data Migration Logic
   Object.keys(parsed).forEach(key => {
@@ -40,7 +32,6 @@ export const getAllUsers = (): Record<string, UserProgress> => {
 
           user.masteredReading = formattedMastered;
           user.masteredWriting = formattedMastered; // Copy to writing too
-          hasChanges = true;
       }
 
       // Same for weak kanji
@@ -57,24 +48,14 @@ export const getAllUsers = (): Record<string, UserProgress> => {
              : oldWeak;
           user.weakReading = formattedWeak;
           user.weakWriting = formattedWeak;
-          hasChanges = true;
       }
       
       // Ensure arrays exist
-      if (!user.masteredReading) { user.masteredReading = []; hasChanges = true; }
-      if (!user.masteredWriting) { user.masteredWriting = []; hasChanges = true; }
-      if (!user.weakReading) { user.weakReading = []; hasChanges = true; }
-      if (!user.weakWriting) { user.weakWriting = []; hasChanges = true; }
+      if (!user.masteredReading) user.masteredReading = [];
+      if (!user.masteredWriting) user.masteredWriting = [];
+      if (!user.weakReading) user.weakReading = [];
+      if (!user.weakWriting) user.weakWriting = [];
   });
-  
-  // If we migrated data, save it back to prevent re-migration next time
-  if (hasChanges) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-    } catch (e) {
-      console.error("Failed to save migrated data", e);
-    }
-  }
   
   return parsed;
 };
@@ -107,11 +88,6 @@ export const saveGameResult = (username: string, result: GameResult): UserProgre
     total: result.total,
     mode: result.mode
   });
-
-  // Limit history size to prevent storage overflow (Keep last 50 games)
-  if (currentProgress.history.length > 50) {
-    currentProgress.history = currentProgress.history.slice(-50);
-  }
 
   // Determine which arrays to update based on game mode
   const targetMastered = result.mode === 'READING' ? 'masteredReading' : 'masteredWriting';

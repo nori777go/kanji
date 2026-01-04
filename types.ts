@@ -14,7 +14,6 @@ export enum GameMode {
   WRITING = 'WRITING',
   HISTORY = 'HISTORY',
   HOW_TO_PLAY = 'HOW_TO_PLAY',
-  COLLECTION = 'COLLECTION',
 }
 
 export interface DrawingResult {

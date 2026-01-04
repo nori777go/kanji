@@ -1,41 +1,34 @@
-
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 
 const AdBanner: React.FC = () => {
-  const adRef = useRef<HTMLModElement>(null);
-
   useEffect(() => {
-    // 要素がない、または既に広告が入っている場合は何もしない
-    if (!adRef.current || adRef.current.innerHTML !== "") return;
-
     try {
-      // window.adsbygoogle が存在するか確認し、なければ初期化
-      // @ts-ignore
-      const ads = window.adsbygoogle = window.adsbygoogle || [];
-      ads.push({});
+      // @ts-ignore: Google AdSense の初期化
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
     } catch (e) {
-      // エラーが発生してもアプリを落とさない
-      console.debug('AdSense load error:', e);
+      console.debug('AdSense 広告の読み込み待ち、またはブロックされました');
     }
   }, []);
 
   return (
-    <div className="w-full flex justify-center items-center overflow-hidden shrink-0 min-h-[60px] bg-brand-cream">
-      <div className="relative w-full px-2 py-1 bg-brand-cream text-center">
+    <div 
+      className="w-full flex justify-center items-center overflow-hidden shrink-0 min-h-[55px] bg-brand-cream"
+    >
+      <div className="relative w-full flex justify-center py-1 bg-brand-cream">
         {/* 
-          ユーザー指定の広告ユニット: 
-          slot: 2216718696
-          format: autorelaxed
+          特定の広告ユニットを表示するためのタグ。
+          data-ad-client: ca-pub-3688954659030805
+          data-ad-slot: AdSense管理画面で作成した「バナー広告」のIDを YOUR_AD_SLOT_ID に入力してください。
         */}
-        <ins ref={adRef}
-             className="adsbygoogle"
-             style={{ display: 'block', minWidth: '250px' }}
+        <ins className="adsbygoogle"
+             style={{ display: 'inline-block', width: '320px', height: '50px' }}
              data-ad-client="ca-pub-3688954659030805"
-             data-ad-slot="2216718696"
-             data-ad-format="autorelaxed"
-             data-full-width-responsive="true">
+             data-ad-slot="YOUR_AD_SLOT_ID"
+             data-ad-format="horizontal"
+             data-full-width-responsive="false">
         </ins>
-        <span className="absolute text-[8px] text-gray-300 pointer-events-none -top-1 left-4 uppercase font-bold tracking-widest bg-brand-cream px-1">AD</span>
+        
+        <span className="absolute text-[8px] text-gray-300 pointer-events-none -top-1 left-2 uppercase font-bold tracking-widest bg-brand-cream px-1">AD</span>
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { KanjiData, GameResult } from '../types';
-import { fetchKanji, fetchKanjiDetails } from '../services/geminiService';
-import { ArrowRight, HelpCircle, ArrowLeft, WifiOff } from 'lucide-react';
+import { fetchKanji } from '../services/geminiService';
+import { ArrowRight, HelpCircle, ArrowLeft } from 'lucide-react';
 import ResultScreen from './ResultScreen';
 import { isLooseMatch } from '../utils/kana';
 import { GlobalHeader } from './Logo';
@@ -16,9 +16,10 @@ interface ReadingModeProps {
   onBack: () => void;
   onShowHowToPlay: () => void;
   onLogoClick: () => void;
+  onStepChange?: () => void;
 }
 
-const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick }) => {
+const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick, onStepChange }) => {
   const [kanjiList, setKanjiList] = useState<KanjiData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
@@ -53,40 +54,20 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
     setFeedback('idle');
     setUserInput('');
 
-    let data: KanjiData[] = [];
-
-    // データ修復ロジック：
-    // プレビュー環境などでAPIが失敗し、中身が空のデータが渡されることがあるため、
-    // 読み仮名がない場合は再度詳細取得（モックデータ利用）を試みる。
     if (initialKanji && initialKanji.length > 0) {
-        const needsRepair = initialKanji.some(k => 
-            (!k.onyomi || k.onyomi.length === 0) && (!k.kunyomi || k.kunyomi.length === 0)
-        );
-
-        if (needsRepair) {
-            console.log("Empty data detected. Repairing from local dictionary...");
-            const chars = initialKanji.map(k => k.character);
-            data = await fetchKanjiDetails(chars);
-        } else {
-            data = initialKanji;
-        }
+        setKanjiList(initialKanji);
+        setLoading(false);
     } else {
-        data = await fetchKanji(5, excludeKanji, grade);
+        const data = await fetchKanji(5, excludeKanji, grade);
+        setKanjiList(data);
+        setLoading(false);
     }
-
-    setKanjiList(data);
-    setLoading(false);
   };
-
-  const currentKanji = kanjiList[currentIndex];
-  // それでもデータがない場合のフォールバック（表示用）
-  const hasData = currentKanji && (currentKanji.kunyomi.length > 0 || currentKanji.onyomi.length > 0);
 
   const handleCheck = () => {
     if (!userInput.trim()) return;
-    
-    // 答えの候補を作成（データがなくても、修復済みなら入っているはず）
-    const allValidReadings = [...(currentKanji?.kunyomi || []), ...(currentKanji?.onyomi || [])];
+    const currentKanji = kanjiList[currentIndex];
+    const allValidReadings = [...currentKanji.kunyomi, ...currentKanji.onyomi];
     const isCorrect = isLooseMatch(userInput, allValidReadings);
 
     if (isCorrect) {
@@ -104,6 +85,7 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
       setFeedback('idle');
       setUserInput('');
       setCurrentIndex(prev => prev + 1);
+      if (onStepChange) onStepChange();
       
       if (inputRef.current) {
           inputRef.current.readOnly = false;
@@ -149,6 +131,8 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
      );
   }
 
+  const currentKanji = kanjiList[currentIndex];
+
   return (
     <div className="w-full h-full flex flex-col items-center bg-brand-cream overflow-hidden">
       <GlobalHeader 
@@ -185,24 +169,11 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
                 )}
             </div>
 
-            {!hasData && (
-                <div className="flex items-center gap-2 text-xs text-red-500 font-bold bg-red-100 px-3 py-1 rounded-full">
-                    <WifiOff size={14} />
-                    <span>データがありません（オフライン）</span>
-                </div>
-            )}
-
             {feedback === 'incorrect' && (
                 <div className="bg-white p-3 rounded-2xl border-4 border-brand-blue w-full animate-fade-in shadow-lg text-center shrink-0">
                     <p className="text-gray-400 text-[10px] font-bold mb-1 uppercase tracking-widest">こたえ</p>
-                    {hasData ? (
-                        <>
-                            <p className="text-2xl font-black text-brand-blue leading-tight">{currentKanji.kunyomi.join('・')}</p>
-                            <p className="text-lg font-black text-brand-blue opacity-80">{currentKanji.onyomi.join('・')}</p>
-                        </>
-                    ) : (
-                        <p className="text-sm font-black text-gray-400">（ネットにつないでね）</p>
-                    )}
+                    <p className="text-2xl font-black text-brand-blue leading-tight">{currentKanji.kunyomi.join('・')}</p>
+                    <p className="text-lg font-black text-brand-blue opacity-80">{currentKanji.onyomi.join('・')}</p>
                 </div>
             )}
 

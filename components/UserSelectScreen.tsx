@@ -17,12 +17,8 @@ const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onSho
   const [newName, setNewName] = useState('');
 
   useEffect(() => {
-    try {
-      setUsers(getAllUsers());
-      setLastUser(getLastUser());
-    } catch (e) {
-      console.error("Storage error:", e);
-    }
+    setUsers(getAllUsers());
+    setLastUser(getLastUser());
   }, []);
 
   const userList = Object.keys(users);
@@ -34,7 +30,7 @@ const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onSho
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-brand-cream overflow-hidden">
+    <div className="flex flex-col h-full bg-brand-cream overflow-hidden">
       <GlobalHeader 
         onLogoClick={onLogoClick}
         rightAction={
@@ -48,14 +44,15 @@ const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onSho
       />
       <div className="flex-1 flex flex-col max-w-sm mx-auto w-full px-6 min-h-0 bg-brand-cream overflow-y-auto pb-6">
         
-        <div className="space-y-2 pt-4 shrink-0">
-          <div className="text-center mb-2">
+        {/* User Selection (Ultra Tight Top) */}
+        <div className="space-y-2 pt-1 shrink-0">
+          <div className="text-center mb-0.5">
             <h2 className="text-xl font-black text-gray-700 tracking-tight">だれが あそぶ？</h2>
             <p className="text-gray-400 font-bold text-[10px]">おなまえ を えらんでね</p>
           </div>
 
           {userList.length === 0 && !isCreating ? (
-              <div className="border-2 border-dashed border-gray-300 rounded-[2rem] py-8 px-4 text-center bg-white/20 transition-all flex items-center justify-center gap-3 animate-fade-in mb-1">
+              <div className="border-2 border-dashed border-gray-300 rounded-[2rem] py-4 px-4 text-center bg-white/20 transition-all flex items-center justify-center gap-3 animate-fade-in mb-1">
                   <User size={20} className="text-gray-300" />
                   <p className="font-black text-gray-400 text-xs">
                     まだ ユーザー が いません
@@ -104,7 +101,7 @@ const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onSho
             </div>
           )}
           
-          <div className="pt-2">
+          <div className="pt-0.5">
               {!isCreating ? (
                   <button
                       onClick={() => setIsCreating(true)}
@@ -158,7 +155,8 @@ const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onSho
           </div>
         </div>
 
-        <div className="text-center pt-6 pb-6 flex flex-col items-center gap-2 mt-2">
+        {/* Footer Explanation (Packed tightly with mt-2 to remove the gap) */}
+        <div className="text-center pt-2 pb-6 flex flex-col items-center gap-2 mt-2">
             <div className="bg-white rounded-[2rem] p-4 shadow-sm border-2 border-brand-yellow/30 text-left w-full animate-fade-in">
               <div className="flex items-center gap-3 mb-2">
                 <Sparkles className="text-brand-yellow fill-brand-yellow" size={18} />

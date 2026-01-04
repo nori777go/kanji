@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { GRADE_KANJI_LISTS } from '../data/gradeKanji';
+import { getKanjiListForGrade } from '../data/gradeKanji';
 import { UserProgress, KanjiData, GameMode } from '../types';
 import { fetchKanjiDetails } from '../services/geminiService';
 import { ArrowLeft, BookOpen, PenTool, Check, HelpCircle } from 'lucide-react';
@@ -20,7 +20,8 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'READING' | 'WRITING'>('READING');
   
-  const fullList = GRADE_KANJI_LISTS[grade] || [];
+  // 新しいヘルパー関数を使用してリストを取得
+  const fullList = getKanjiListForGrade(grade);
   
   const masteredMap = new Map<string, KanjiData>();
   if (userProgress) {
@@ -29,7 +30,7 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
   }
 
   const masteredCount = fullList.filter(char => masteredMap.has(char)).length;
-  const progressPercent = Math.round((masteredCount / fullList.length) * 100);
+  const progressPercent = fullList.length > 0 ? Math.round((masteredCount / fullList.length) * 100) : 0;
 
   const size = 64;
   const strokeWidth = 6;
@@ -42,15 +43,20 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
     setLoading(true);
     const unmastered = fullList.filter(char => !masteredMap.has(char));
     const targets = unmastered.sort(() => 0.5 - Math.random()).slice(0, 5);
+    
+    // 足りない場合は習得済みから補充
     if (targets.length < 5) {
         const remaining = 5 - targets.length;
         const mastered = Array.from(masteredMap.keys()).sort(() => 0.5 - Math.random()).slice(0, remaining);
         targets.push(...mastered);
     }
+    
     if (targets.length === 0) {
         setLoading(false);
         return;
     }
+
+    // 詳細データを取得（ローカルにあればAPI節約、なければAPI使用）
     const kanjiData = await fetchKanjiDetails(targets);
     setLoading(false);
     const mode = activeTab === 'READING' ? GameMode.READING : GameMode.WRITING;
@@ -74,7 +80,7 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
        />
 
       <div className="flex-1 overflow-y-auto flex flex-col">
-        {/* Mode Tabs (Kana) */}
+        {/* Mode Tabs */}
         <div className="flex max-w-md mx-auto w-full p-4 gap-2">
           <button
               onClick={() => setActiveTab('READING')}
@@ -98,7 +104,7 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
           </button>
         </div>
 
-        {/* Grade Selector (Kana) */}
+        {/* Grade Selector */}
         <div className="p-2">
           <div className="flex justify-center gap-1 max-w-md mx-auto overflow-x-auto pb-2">
               {[1, 2, 3, 4, 5, 6].map(g => (
@@ -117,7 +123,7 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
           </div>
         </div>
 
-        {/* Stats (Kana) */}
+        {/* Stats */}
         <div className="p-4 max-w-md mx-auto w-full">
           <div className={`bg-white p-4 rounded-3xl border-2 shadow-sm flex items-center justify-between transition-colors ${activeTab === 'READING' ? 'border-brand-blue' : 'border-brand-pink'}`}>
               <div>
@@ -149,7 +155,7 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
           </div>
         </div>
 
-        {/* Action Button (Kana) */}
+        {/* Action Button */}
         <div className="px-4 pb-4 max-w-md mx-auto w-full">
           <button 
               onClick={handleStartGame}

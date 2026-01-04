@@ -23,7 +23,7 @@ export const GlobalHeader: React.FC<{
   leftAction?: React.ReactNode;
   onLogoClick?: () => void;
 }> = ({ rightAction, leftAction, onLogoClick }) => (
-  <div className="w-full bg-white px-4 pb-3 shadow-sm z-30 flex items-center justify-between ios-padding-top">
+  <div className="w-full bg-white px-4 py-3 shadow-sm z-30 flex items-center justify-between safe-top">
     <div className="flex-1 flex justify-start">
       {leftAction}
     </div>
