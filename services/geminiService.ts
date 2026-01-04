@@ -1,24 +1,45 @@
+
+import { GoogleGenAI, Type } from "@google/genai";
 import { KanjiData, DrawingResult } from '../types';
 import { GRADE_KANJI_LISTS } from '../data/gradeKanji';
 
-/**
- * 【iOSアプリ / Webアプリ 共通】
- * APIキーを一切持たず、Cloud Run のエンドポイントを呼び出します。
- * 接続できない場合は、内蔵のモックデータを使用して動作します。
- */
+// ---------------------------------------------------------------------------
+// 設定: APIキー
+// ※ 書き取りの判定(AI)にのみ使用します。出題データはローカルを使用します。
+// ---------------------------------------------------------------------------
+// ブラウザ環境で process が存在しない場合のエラーを防ぐ
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.API_KEY;
+    }
+  } catch (e) {
+    return undefined;
+  }
+  return undefined;
+};
 
-// 本番環境のCloud Run URL
-const CLOUD_RUN_URL = 'https://your-pikapika-backend-xxxxxx.a.run.app/api/gemini'; 
+const API_KEY = getApiKey();
 
-// URLがプレースホルダー（未設定）のままかどうか判定
-const IS_BACKEND_CONFIGURED = !CLOUD_RUN_URL.includes('your-pikapika-backend');
-
-const BACKEND_ENDPOINT = window.location.hostname === 'localhost' 
-  ? '/api/gemini' 
-  : CLOUD_RUN_URL;
+// APIキーがある場合のみクライアントを初期化
+const ai = API_KEY ? new GoogleGenAI({ apiKey: API_KEY }) : null;
+const modelName = 'gemini-2.5-flash'; // 高速かつ安価なモデルを使用
 
 // ---------------------------------------------------------------------------
-// オフライン用データベース (Grade 1-6)
+// スキーマ定義 (書き取り判定用のみ使用)
+// ---------------------------------------------------------------------------
+const handwritingSchema = {
+  type: Type.OBJECT,
+  properties: {
+    isCorrect: { type: Type.BOOLEAN },
+    feedback: { type: Type.STRING },
+    confidence: { type: Type.NUMBER }
+  },
+  required: ["isCorrect", "feedback", "confidence"]
+};
+
+// ---------------------------------------------------------------------------
+// オフライン用データベース (Grade 1-6) - メインデータソース
 // ---------------------------------------------------------------------------
 const MOCK_KANJI_DB: Record<string, KanjiData> = {
   // --- 1年生 ---
@@ -93,226 +114,101 @@ const MOCK_KANJI_DB: Record<string, KanjiData> = {
   "町": { character: "町", onyomi: ["チョウ"], kunyomi: ["まち"], meaning: "まち", example: "町内" },
   "王": { character: "王", onyomi: ["オウ"], kunyomi: [], meaning: "きんぐ", example: "王さま" },
   "玉": { character: "玉", onyomi: ["ギョク"], kunyomi: ["たま"], meaning: "ボール", example: "玉入れ" },
-
-  // --- 2年生 ---
-  "引": { character: "引", onyomi: ["イン"], kunyomi: ["ひく"], meaning: "ひっぱる", example: "引き算" },
-  "雲": { character: "雲", onyomi: ["ウン"], kunyomi: ["くも"], meaning: "そらのくも", example: "雨雲" },
-  "遠": { character: "遠", onyomi: ["エン"], kunyomi: ["とおい"], meaning: "はなれている", example: "遠足" },
-  "園": { character: "園", onyomi: ["エン"], kunyomi: ["その"], meaning: "にわ", example: "公園" },
-  "夏": { character: "夏", onyomi: ["カ"], kunyomi: ["なつ"], meaning: "あついなつ", example: "夏休み" },
-  "家": { character: "家", onyomi: ["カ"], kunyomi: ["いえ"], meaning: "おうち", example: "家族" },
-  "歌": { character: "歌", onyomi: ["カ"], kunyomi: ["うた"], meaning: "ソング", example: "歌手" },
-  "画": { character: "画", onyomi: ["ガ"], kunyomi: [], meaning: "え", example: "画用紙" },
-  "回": { character: "回", onyomi: ["カイ"], kunyomi: ["まわる"], meaning: "くるくる", example: "一回" },
-  "会": { character: "会", onyomi: ["カイ"], kunyomi: ["あう"], meaning: "あうこと", example: "会話" },
-  "海": { character: "海", onyomi: ["カイ"], kunyomi: ["うみ"], meaning: "ひろいうみ", example: "海水よく" },
-  "絵": { character: "絵", onyomi: ["カイ"], kunyomi: ["え"], meaning: "イラスト", example: "絵本" },
-  "外": { character: "外", onyomi: ["ガイ"], kunyomi: ["そと"], meaning: "そとがわ", example: "外国" },
-  "楽": { character: "楽", onyomi: ["ガク"], kunyomi: ["たのしい"], meaning: "たのしい", example: "音楽" },
-  "間": { character: "間", onyomi: ["カン"], kunyomi: ["あいだ"], meaning: "あいだ", example: "時間" },
-  "顔": { character: "顔", onyomi: ["ガン"], kunyomi: ["かお"], meaning: "かお", example: "顔いろ" },
-  "記": { character: "記", onyomi: ["キ"], kunyomi: ["しるす"], meaning: "かくこと", example: "日記" },
-  "魚": { character: "魚", onyomi: ["ギョ"], kunyomi: ["さかな"], meaning: "さかな", example: "金魚" },
-  "強": { character: "強", onyomi: ["キョウ"], kunyomi: ["つよい"], meaning: "つよい", example: "勉強" },
-  "教": { character: "教", onyomi: ["キョウ"], kunyomi: ["おしえる"], meaning: "おしえる", example: "教室" },
-  "近": { character: "近", onyomi: ["キン"], kunyomi: ["ちかい"], meaning: "そば", example: "近所" },
-  "兄": { character: "兄", onyomi: ["ケイ"], kunyomi: ["あに"], meaning: "おにいさん", example: "兄弟" },
-  "形": { character: "形", onyomi: ["ケイ"], kunyomi: ["かたち"], meaning: "かたち", example: "図形" },
-  "計": { character: "計", onyomi: ["ケイ"], kunyomi: ["はかる"], meaning: "かずえる", example: "時計" },
-  "元": { character: "元", onyomi: ["ゲン"], kunyomi: ["もと"], meaning: "はじめ", example: "元気" },
-  "言": { character: "言", onyomi: ["ゲン"], kunyomi: ["いう"], meaning: "ことば", example: "方言" },
-  "原": { character: "原", onyomi: ["ゲン"], kunyomi: ["はら"], meaning: "のはら", example: "草原" },
-  "戸": { character: "戸", onyomi: ["コ"], kunyomi: ["と"], meaning: "とびら", example: "戸だな" },
-  "古": { character: "古", onyomi: ["コ"], kunyomi: ["ふるい"], meaning: "むかし", example: "中古" },
-  "午": { character: "午", onyomi: ["ゴ"], kunyomi: [], meaning: "ひる", example: "午前" },
-  "後": { character: "後", onyomi: ["ゴ"], kunyomi: ["あと"], meaning: "あと", example: "午後" },
-  "語": { character: "語", onyomi: ["ゴ"], kunyomi: ["かたる"], meaning: "ことば", example: "日本語" },
-  "公": { character: "公", onyomi: ["コウ"], kunyomi: ["おおやけ"], meaning: "みんなの", example: "公園" },
-  "広": { character: "広", onyomi: ["コウ"], kunyomi: ["ひろい"], meaning: "ひろい", example: "広場" },
-  "光": { character: "光", onyomi: ["コウ"], kunyomi: ["ひかり"], meaning: "まぶしい", example: "日光" },
-  "考": { character: "考", onyomi: ["コウ"], kunyomi: ["かんがえる"], meaning: "おもう", example: "思考" },
-  "行": { character: "行", onyomi: ["コウ"], kunyomi: ["いく"], meaning: "いく", example: "旅行" },
-  "高": { character: "高", onyomi: ["コウ"], kunyomi: ["たかい"], meaning: "たかい", example: "高校" },
-  "黄": { character: "黄", onyomi: ["コウ"], kunyomi: ["き"], meaning: "きいろ", example: "黄色" },
-  "合": { character: "合", onyomi: ["ゴウ"], kunyomi: ["あう"], meaning: "ぴったり", example: "合格" },
-  "谷": { character: "谷", onyomi: ["コク"], kunyomi: ["たに"], meaning: "たに", example: "谷間" },
-  "国": { character: "国", onyomi: ["コク"], kunyomi: ["くに"], meaning: "くに", example: "外国" },
-  "黒": { character: "黒", onyomi: ["コク"], kunyomi: ["くろ"], meaning: "まっくろ", example: "黒板" },
-  "今": { character: "今", onyomi: ["コン"], kunyomi: ["いま"], meaning: "いま", example: "今日" },
-
-  // --- 3年生 ---
-  "悪": { character: "悪", onyomi: ["アク"], kunyomi: ["わるい"], meaning: "よくない", example: "悪人" },
-  "安": { character: "安", onyomi: ["アン"], kunyomi: ["やすい"], meaning: "しずか", example: "安心" },
-  "暗": { character: "暗", onyomi: ["アン"], kunyomi: ["くらい"], meaning: "まっくら", example: "暗記" },
-  "医": { character: "医", onyomi: ["イ"], kunyomi: [], meaning: "なおす", example: "医者" },
-  "意": { character: "意", onyomi: ["イ"], kunyomi: [], meaning: "こころ", example: "意味" },
-  "育": { character: "育", onyomi: ["イク"], kunyomi: ["そだつ"], meaning: "そだてる", example: "教育" },
-  "員": { character: "員", onyomi: ["イン"], kunyomi: [], meaning: "ひと", example: "全員" },
-  "運": { character: "運", onyomi: ["ウン"], kunyomi: ["はこぶ"], meaning: "はこぶ", example: "運動" },
-  "泳": { character: "泳", onyomi: ["エイ"], kunyomi: ["およぐ"], meaning: "およぐこと", example: "水泳" },
-  "駅": { character: "駅", onyomi: ["エキ"], kunyomi: [], meaning: "ステーション", example: "駅長" },
-  "屋": { character: "屋", onyomi: ["オク"], kunyomi: ["や"], meaning: "みせ、いえ", example: "屋上" },
-  "温": { character: "温", onyomi: ["オン"], kunyomi: ["あたたかい"], meaning: "あったかい", example: "温泉" },
-  "化": { character: "化", onyomi: ["カ"], kunyomi: ["ばける"], meaning: "かわる", example: "お化け" },
-  "荷": { character: "荷", onyomi: ["カ"], kunyomi: ["に"], meaning: "にもつ", example: "荷物" },
-  "界": { character: "界", onyomi: ["カイ"], kunyomi: [], meaning: "さかい", example: "世界" },
-  "開": { character: "開", onyomi: ["カイ"], kunyomi: ["あく"], meaning: "あける", example: "開店" },
-
-  // --- 4年生 ---
-  "愛": { character: "愛", onyomi: ["アイ"], kunyomi: [], meaning: "ラブ", example: "愛情" },
-  "案": { character: "案", onyomi: ["アン"], kunyomi: [], meaning: "かんがえ", example: "案内" },
-  "以": { character: "以", onyomi: ["イ"], kunyomi: [], meaning: "〜より", example: "以上" },
-  "衣": { character: "衣", onyomi: ["イ"], kunyomi: ["ころも"], meaning: "きもの", example: "衣料" },
-  "位": { character: "位", onyomi: ["イ"], kunyomi: ["くらい"], meaning: "ランク", example: "一位" },
-  "印": { character: "印", onyomi: ["イン"], kunyomi: ["しるし"], meaning: "はんこ", example: "印刷" },
-  "英": { character: "英", onyomi: ["エイ"], kunyomi: [], meaning: "イギリス", example: "英語" },
-  "栄": { character: "栄", onyomi: ["エイ"], kunyomi: ["さかえる"], meaning: "はなやか", example: "栄養" },
-  "塩": { character: "塩", onyomi: ["エン"], kunyomi: ["しお"], meaning: "しお", example: "食塩" },
-  "億": { character: "億", onyomi: ["オク"], kunyomi: [], meaning: "すごいかず", example: "一億円" },
-  "果": { character: "果", onyomi: ["カ"], kunyomi: ["くだもの"], meaning: "みのり", example: "果物" },
-  "貨": { character: "貨", onyomi: ["カ"], kunyomi: [], meaning: "たから", example: "貨物" },
-  "課": { character: "課", onyomi: ["カ"], kunyomi: [], meaning: "わりあて", example: "課長" },
-  "害": { character: "害", onyomi: ["ガイ"], kunyomi: [], meaning: "わるいこと", example: "公害" },
-  "街": { character: "街", onyomi: ["ガイ"], kunyomi: ["まち"], meaning: "まち", example: "街道" },
-
-  // --- 5年生 ---
-  "圧": { character: "圧", onyomi: ["アツ"], kunyomi: [], meaning: "おす", example: "圧力" },
-  "移": { character: "移", onyomi: ["イ"], kunyomi: ["うつる"], meaning: "うごく", example: "移動" },
-  "因": { character: "因", onyomi: ["イン"], kunyomi: ["よる"], meaning: "もと", example: "原因" },
-  "永": { character: "永", onyomi: ["エイ"], kunyomi: ["ながい"], meaning: "えいえん", example: "永遠" },
-  "営": { character: "営", onyomi: ["エイ"], kunyomi: ["いとなむ"], meaning: "しごと", example: "営業" },
-  "衛": { character: "衛", onyomi: ["エイ"], kunyomi: [], meaning: "まもる", example: "衛生" },
-  "易": { character: "易", onyomi: ["エキ"], kunyomi: ["やさしい"], meaning: "かんたん", example: "容易" },
-  "益": { character: "益", onyomi: ["エキ"], kunyomi: [], meaning: "もうけ", example: "利益" },
-  "演": { character: "演", onyomi: ["エン"], kunyomi: [], meaning: "おこなう", example: "演技" },
-  "応": { character: "応", onyomi: ["オウ"], kunyomi: [], meaning: "こたえる", example: "応援" },
-  "桜": { character: "桜", onyomi: ["オウ"], kunyomi: ["さくら"], meaning: "さくら", example: "桜並木" },
-  "恩": { character: "恩", onyomi: ["オン"], kunyomi: [], meaning: "めぐみ", example: "恩人" },
-  "可": { character: "可", onyomi: ["カ"], kunyomi: [], meaning: "よい", example: "可能" },
-  "河": { character: "河", onyomi: ["カ"], kunyomi: ["かわ"], meaning: "かわ", example: "河川" },
-  "過": { character: "過", onyomi: ["カ"], kunyomi: ["すぎる"], meaning: "すぎる", example: "過去" },
-
-  // --- 6年生 ---
-  "異": { character: "異", onyomi: ["イ"], kunyomi: ["ことなる"], meaning: "ちがう", example: "異変" },
-  "遺": { character: "遺", onyomi: ["イ"], kunyomi: [], meaning: "のこす", example: "遺産" },
-  "域": { character: "域", onyomi: ["イキ"], kunyomi: [], meaning: "ばしょ", example: "地域" },
-  "宇": { character: "宇", onyomi: ["ウ"], kunyomi: [], meaning: "そら", example: "宇宙" },
-  "映": { character: "映", onyomi: ["エイ"], kunyomi: ["うつる"], meaning: "うつる", example: "映画" },
-  "延": { character: "延", onyomi: ["エン"], kunyomi: ["のびる"], meaning: "のばす", example: "延期" },
-  "沿": { character: "沿", onyomi: ["エン"], kunyomi: ["そう"], meaning: "そう", example: "沿線" },
-  "我": { character: "我", onyomi: ["ガ"], kunyomi: ["われ"], meaning: "わたし", example: "我々" },
-  "灰": { character: "灰", onyomi: ["カイ"], kunyomi: ["はい"], meaning: "はい", example: "灰色" },
-  "拡": { character: "拡", onyomi: ["カク"], kunyomi: ["ひろげる"], meaning: "ひろげる", example: "拡大" },
-  "革": { character: "革", onyomi: ["カク"], kunyomi: ["かわ"], meaning: "かわ", example: "革靴" },
-  "閣": { character: "閣", onyomi: ["カク"], kunyomi: [], meaning: "たかどの", example: "内閣" },
-  "割": { character: "割", onyomi: ["カツ"], kunyomi: ["わる"], meaning: "わる", example: "分割" },
-  "株": { character: "株", onyomi: [], kunyomi: ["かぶ"], meaning: "きりかぶ", example: "株式" },
-  "巻": { character: "巻", onyomi: ["カン"], kunyomi: ["まく"], meaning: "まく", example: "巻物" },
-  "看": { character: "看", onyomi: ["カン"], kunyomi: [], meaning: "みる", example: "看板" },
-  "簡": { character: "簡", onyomi: ["カン"], kunyomi: [], meaning: "かんたん", example: "簡単" },
-  "危": { character: "危", onyomi: ["キ"], kunyomi: ["あぶない"], meaning: "ピンチ", example: "危険" },
-  "机": { character: "机", onyomi: ["キ"], kunyomi: ["つくえ"], meaning: "つくえ", example: "学習机" },
 };
 
-async function callBackend(action: string, payload: any) {
-  // バックエンド未設定（ダミーURL）またはローカル以外でAPIキーがない場合は即オフライン
-  if (window.location.hostname !== 'localhost' && !IS_BACKEND_CONFIGURED) {
-    throw new Error('Backend not configured, skipping fetch.');
-  }
-
-  try {
-    const response = await fetch(BACKEND_ENDPOINT, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ action, ...payload }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server Error: ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.warn(`Backend call failed (${action}). Using Offline Mode.`);
-    throw error;
-  }
-}
-
 // ---------------------------------------------------------------------------
-// オフラインロジック
+// ローカルロジック
 // ---------------------------------------------------------------------------
 
-/**
- * 学年ごとのリストから、内蔵DBに定義が存在する漢字のみを抽出して出題します。
- * これにより、オフライン時でも「データなし」エラーを防ぎます。
- */
 function getOfflineKanji(count: number, excludeChars: string[], grade: number): KanjiData[] {
-  // 1. その学年の漢字リストを取得
   const gradeList = GRADE_KANJI_LISTS[grade] || [];
-  
-  // 2.【重要】内蔵DBに詳細データが存在する漢字だけに絞り込む（オフラインの安全装置）
+  // DBに定義されている漢字のみを対象とする
   const definedKanji = gradeList.filter(char => MOCK_KANJI_DB[char] !== undefined);
   
-  // 3. 習得済み（除外リスト）の漢字を除外
+  // 除外リストにある漢字を省く
   let available = definedKanji.filter(char => !excludeChars.includes(char));
 
-  // 4. もし新しい漢字がなくなったら（全て習得済みなど）、エラーを出さずに
-  //    DBにある漢字全体から再出題してゲームを継続させる（無限プレイ対応）
+  // もし出題できる漢字がなくなってしまったら、除外を無視して全候補から選ぶ
   if (available.length === 0 && definedKanji.length > 0) {
       available = definedKanji;
   }
   
-  // 5. ランダムにシャッフルして指定数返す
+  // ランダムにシャッフルして指定数取得
   const shuffled = available.sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count).map(char => MOCK_KANJI_DB[char]);
 }
 
+// ---------------------------------------------------------------------------
+// サービス関数 (出題はローカル、判定はAI)
+// ---------------------------------------------------------------------------
+
+/**
+ * 漢字の詳細データを取得する（常にローカルDBを使用）
+ */
 export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData[]> => {
-  try {
-    return await callBackend('details', { characters });
-  } catch (error) {
-    // 失敗時はモックデータから検索
-    return characters.map(char => {
-      if (MOCK_KANJI_DB[char]) {
-        return MOCK_KANJI_DB[char];
-      }
-      // 辞書にない場合の最終フォールバック
-      return {
-        character: char,
-        onyomi: [],
-        kunyomi: [],
-        meaning: "（オフラインのため詳細なし）",
-        example: ""
-      };
-    });
-  }
+  // APIは呼び出さず、常に内部辞書からデータを返します。
+  return characters.map(char => MOCK_KANJI_DB[char] || {
+    character: char,
+    onyomi: [],
+    kunyomi: [],
+    meaning: "（じしょ に ないよ）",
+    example: ""
+  });
 };
 
+/**
+ * 漢字の問題を生成する（常にローカルDBを使用）
+ */
 export const fetchKanji = async (count: number = 5, excludeChars: string[] = [], grade: number = 1): Promise<KanjiData[]> => {
-  try {
-    return await callBackend('generate', { count, excludeChars, grade });
-  } catch (error) {
-    // オフライン生成ロジックを使用
-    return getOfflineKanji(count, excludeChars, grade);
-  }
+  // APIは呼び出さず、常に内部ロジックで問題を生成します。
+  return getOfflineKanji(count, excludeChars, grade);
 };
 
+/**
+ * 書き取りの判定を行う（AIがあればAIを使用、なければ正解扱い）
+ * ※ ここだけはAPIキーがあればAIを使います。
+ */
 export const evaluateHandwriting = async (base64Image: string, targetKanji: string): Promise<DrawingResult> => {
-  try {
-    const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
-    return await callBackend('evaluate', { image: cleanBase64, targetKanji });
-  } catch (error) {
-    // オフライン時のデモ動作：書き取りは常に正解として扱う
-    return new Promise((resolve) => {
+  if (!ai) {
+     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
           isCorrect: true,
           feedback: "（オフラインモード）とてもきれいに かけているね！",
           confidence: 0.99
         });
-      }, 500); // 待ち時間を短縮
+      }, 500);
     });
+  }
+
+  try {
+    const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
+    const prompt = `Is this drawing the Kanji 「${targetKanji}」? Assess correctness for a child learner. Be encouraging. Return JSON.`;
+    
+    const response = await ai.models.generateContent({
+      model: modelName,
+      contents: {
+        parts: [
+          { inlineData: { mimeType: "image/png", data: cleanBase64 } },
+          { text: prompt }
+        ]
+      },
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: handwritingSchema
+      }
+    });
+
+    // Guidelines: Use .text property, not .text()
+    const text = response.text;
+    return JSON.parse(text || '{}');
+  } catch (error) {
+    console.warn("Gemini API Error (evaluateHandwriting):", error);
+    // AIエラー時も学習を止めないように正解扱いにする
+    return {
+      isCorrect: true,
+      feedback: "（通信エラー）判定できなかったけど、よくかけたね！",
+      confidence: 0
+    };
   }
 };

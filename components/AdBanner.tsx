@@ -1,13 +1,22 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 const AdBanner: React.FC = () => {
+  const adRef = useRef<HTMLModElement>(null);
+
   useEffect(() => {
+    // コンポーネントがマウントされるたびに実行
+    if (!adRef.current) return;
+
     try {
-      // @ts-ignore: Google AdSense の初期化
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      // 広告要素の中身が空であることを確認してからpushする
+      // (React.StrictModeなどで2回呼ばれた場合の重複エラー防止)
+      if (adRef.current.innerHTML === "") {
+        // @ts-ignore: Google AdSense globals
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      }
     } catch (e) {
-      console.debug('AdSense 広告の読み込み待ち、またはブロックされました');
+      console.debug('AdSense error:', e);
     }
   }, []);
 
@@ -15,13 +24,14 @@ const AdBanner: React.FC = () => {
     <div 
       className="w-full flex justify-center items-center overflow-hidden shrink-0 min-h-[60px] bg-brand-cream"
     >
-      <div className="relative w-full px-2 py-1 bg-brand-cream">
+      <div className="relative w-full px-2 py-1 bg-brand-cream text-center">
         {/* 
           ユーザー指定の広告ユニット: 
           slot: 2216718696
           format: autorelaxed
         */}
-        <ins className="adsbygoogle"
+        <ins ref={adRef}
+             className="adsbygoogle"
              style={{ display: 'block', minWidth: '250px' }}
              data-ad-client="ca-pub-3688954659030805"
              data-ad-slot="2216718696"

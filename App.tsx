@@ -164,7 +164,7 @@ function App() {
                   </div>
                   <div className="text-left min-w-0">
                       <h2 className="text-xl font-black text-gray-800 leading-none mb-1">かんじ リスト</h2>
-                      <p className="text-xs text-brand-orange font-black animate-pulse">あそんで みよう！</p>
+                      <p className="text-xs text-brand-orange font-black animate-pulse">あそんでみよう！</p>
                   </div>
                   <div className="absolute right-4 opacity-10 group-hover:opacity-20 transition-opacity">
                       <PlayCircle size={64} className="text-brand-orange" />
@@ -244,7 +244,8 @@ function App() {
       </main>
       
       <footer className="bg-brand-cream z-50 shrink-0 border-t border-brand-yellow/20 ios-padding-bottom">
-        <AdBanner />
+        {/* key=mode を指定して、画面遷移（mode変更）のたびに広告を再読み込みさせる */}
+        <AdBanner key={mode} />
         <div className="w-full pt-2 pb-2 text-center text-[10px] text-gray-400 font-bold leading-relaxed">
            <div className="space-y-1">
              <div className="flex justify-center items-center gap-4 mb-1">
