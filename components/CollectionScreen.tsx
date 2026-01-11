@@ -20,7 +20,6 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'READING' | 'WRITING'>('READING');
   
-  // 新しいヘルパー関数を使用してリストを取得
   const fullList = getKanjiListForGrade(grade);
   
   const masteredMap = new Map<string, KanjiData>();
@@ -44,7 +43,6 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
     const unmastered = fullList.filter(char => !masteredMap.has(char));
     const targets = unmastered.sort(() => 0.5 - Math.random()).slice(0, 5);
     
-    // 足りない場合は習得済みから補充
     if (targets.length < 5) {
         const remaining = 5 - targets.length;
         const mastered = Array.from(masteredMap.keys()).sort(() => 0.5 - Math.random()).slice(0, remaining);
@@ -56,7 +54,6 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
         return;
     }
 
-    // 詳細データを取得（ローカルにあればAPI節約、なければAPI使用）
     const kanjiData = await fetchKanjiDetails(targets);
     setLoading(false);
     const mode = activeTab === 'READING' ? GameMode.READING : GameMode.WRITING;
@@ -64,116 +61,138 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
   };
 
   return (
-    <div className="flex flex-col h-full bg-brand-cream overflow-hidden">
-       <GlobalHeader 
-        onLogoClick={onLogoClick}
-        leftAction={
-          <button onClick={onBack} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
-            <ArrowLeft size={24} />
-          </button>
-        }
-        rightAction={
-          <button onClick={onShowHowToPlay} className="p-2 text-brand-blue hover:bg-brand-blue/5 rounded-full transition">
-            <HelpCircle size={24} />
-          </button>
-        }
-       />
+    /* 
+       Safari対策: 
+       親コンテナが flex-1 かつ h-full になっているため、
+       ここでも flex-1 と min-h-0 を指定することで高さを確実に継承します。
+    */
+    <div className="flex flex-col flex-1 h-full min-h-0 bg-brand-cream overflow-hidden">
+       {/* ヘッダー部分は高さを固定 (shrink-0) */}
+       <div className="shrink-0 z-50 bg-white">
+         <GlobalHeader 
+          onLogoClick={onLogoClick}
+          leftAction={
+            <button onClick={onBack} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition">
+              <ArrowLeft size={24} />
+            </button>
+          }
+          rightAction={
+            <button onClick={onShowHowToPlay} className="p-2 text-brand-blue hover:bg-brand-blue/5 rounded-full transition">
+              <HelpCircle size={24} />
+            </button>
+          }
+         />
+       </div>
 
-      <div className="flex-1 overflow-y-auto flex flex-col">
-        {/* Mode Tabs */}
-        <div className="flex max-w-md mx-auto w-full p-4 gap-2">
-          <button
-              onClick={() => setActiveTab('READING')}
-              className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
-                  activeTab === 'READING' 
-                  ? 'bg-brand-blue text-white ring-4 ring-brand-blue/20' 
-                  : 'bg-white text-gray-400'
-              }`}
-          >
-              <BookOpen size={20} /> よむ
-          </button>
-          <button
-              onClick={() => setActiveTab('WRITING')}
-              className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
-                  activeTab === 'WRITING' 
-                  ? 'bg-brand-pink text-white ring-4 ring-brand-pink/20' 
-                  : 'bg-white text-gray-400'
-              }`}
-          >
-              <PenTool size={20} /> かく
-          </button>
-        </div>
-
-        {/* Grade Selector */}
-        <div className="p-2">
-          <div className="flex justify-center gap-1 max-w-md mx-auto overflow-x-auto pb-2">
-              {[1, 2, 3, 4, 5, 6].map(g => (
-                  <button
-                      key={g}
-                      onClick={() => setGrade(g)}
-                      className={`px-4 py-2 rounded-full text-sm font-black transition-all ${
-                          grade === g 
-                          ? (activeTab === 'READING' ? 'bg-brand-blue text-white' : 'bg-brand-pink text-white')
-                          : 'bg-white text-gray-400 shadow-sm border border-gray-100'
-                      }`}
-                  >
-                      {g}ねん
-                  </button>
-              ))}
+      {/* 
+          スクロール領域: 
+          1. flex-1 と min-h-0 で親からの高さを使い切る。
+          2. overflow-y-scroll でスクロールコンテキストを強制（iOS対策）。
+          3. overscroll-behavior: contain で親画面のバウンスを抑制。
+          4. WebkitOverflowScrolling: touch を明示。
+      */}
+      <div 
+        className="flex-1 min-h-0 overflow-y-scroll bg-brand-cream" 
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorY: 'contain'
+        }}
+      >
+        <div className="max-w-md mx-auto w-full flex flex-col px-4 pt-4 pb-48">
+          
+          {/* モード切り替えタブ */}
+          <div className="flex gap-2 shrink-0">
+            <button
+                onClick={() => setActiveTab('READING')}
+                className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
+                    activeTab === 'READING' 
+                    ? 'bg-brand-blue text-white ring-4 ring-brand-blue/20' 
+                    : 'bg-white text-gray-400 border border-gray-100'
+                }`}
+            >
+                <BookOpen size={20} /> よむ
+            </button>
+            <button
+                onClick={() => setActiveTab('WRITING')}
+                className={`flex-1 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm ${
+                    activeTab === 'WRITING' 
+                    ? 'bg-brand-pink text-white ring-4 ring-brand-pink/20' 
+                    : 'bg-white text-gray-400 border border-gray-100'
+                }`}
+            >
+                <PenTool size={20} /> かく
+            </button>
           </div>
-        </div>
 
-        {/* Stats */}
-        <div className="p-4 max-w-md mx-auto w-full">
-          <div className={`bg-white p-4 rounded-3xl border-2 shadow-sm flex items-center justify-between transition-colors ${activeTab === 'READING' ? 'border-brand-blue' : 'border-brand-pink'}`}>
-              <div>
-                  <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-1">
-                      {activeTab === 'READING' ? 'できた かんじ（よむ）' : 'できた かんじ（かく）'}
-                  </p>
-                  <p className={`text-3xl font-black ${activeTab === 'READING' ? 'text-brand-blue' : 'text-brand-pink'}`}>
-                      {masteredCount} <span className="text-xs text-gray-400 font-bold tracking-normal">/ {fullList.length} もん</span>
-                  </p>
-              </div>
-              <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
-                  <svg 
-                      viewBox={`0 0 ${size} ${size}`} 
-                      className="absolute inset-0 w-full h-full -rotate-90"
-                  >
-                      <circle cx={center} cy={center} r={radius} stroke="#f3f4f6" strokeWidth={strokeWidth} fill="none" />
-                      <circle 
-                          cx={center} cy={center} r={radius} 
-                          stroke={activeTab === 'READING' ? '#4F95FF' : '#FF6B6B'} 
-                          strokeWidth={strokeWidth} fill="none" 
-                          strokeDasharray={circumference}
-                          strokeDashoffset={dashOffset}
-                          strokeLinecap="round"
-                          className="transition-all duration-700 ease-out"
-                      />
-                  </svg>
-                  <span className="text-[10px] font-black text-gray-600 z-10">{progressPercent}%</span>
-              </div>
+          {/* 学年選択（横スクロール） */}
+          <div className="py-2 mt-1 shrink-0 overflow-hidden">
+            <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+                {[1, 2, 3, 4, 5, 6].map(g => (
+                    <button
+                        key={g}
+                        onClick={() => setGrade(g)}
+                        className={`px-4 py-2 rounded-full text-xs font-black transition-all shrink-0 ${
+                            grade === g 
+                            ? (activeTab === 'READING' ? 'bg-brand-blue text-white' : 'bg-brand-pink text-white')
+                            : 'bg-white text-gray-400 shadow-sm border border-gray-100'
+                        }`}
+                    >
+                        {g}ねん
+                    </button>
+                ))}
+            </div>
           </div>
-        </div>
 
-        {/* Action Button */}
-        <div className="px-4 pb-4 max-w-md mx-auto w-full">
-          <button 
-              onClick={handleStartGame}
-              disabled={loading}
-              className={`w-full text-white py-5 rounded-2xl font-black shadow-md active:scale-95 transition flex items-center justify-center gap-2 ${
-                  activeTab === 'READING' ? 'bg-brand-blue shadow-[0_6px_0_#2b6cb0]' : 'bg-brand-pink shadow-[0_6px_0_#c53030]'
-              } disabled:opacity-50`}
-          >
-              {loading ? <span className="animate-spin text-2xl">⌛</span> : (activeTab === 'READING' ? <BookOpen size={28} strokeWidth={3}/> : <PenTool size={28} strokeWidth={3}/>)}
-              <span className="text-2xl">
-                  {activeTab === 'READING' ? 'よむ れんしゅう' : 'かく れんしゅう'}
-              </span>
-          </button>
-        </div>
+          {/* 統計パネル */}
+          <div className="pb-3 shrink-0">
+            <div className={`bg-white p-3 rounded-2xl border-2 shadow-sm flex items-center justify-between transition-colors ${activeTab === 'READING' ? 'border-brand-blue/30' : 'border-brand-pink/30'}`}>
+                <div className="min-w-0">
+                    <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest mb-0.5">
+                        {activeTab === 'READING' ? 'できた かんじ（よむ）' : 'できた かんじ（かく）'}
+                    </p>
+                    <p className={`text-2xl font-black leading-none ${activeTab === 'READING' ? 'text-brand-blue' : 'text-brand-pink'}`}>
+                        {masteredCount} <span className="text-[10px] text-gray-400 font-bold tracking-normal">/ {fullList.length} もん</span>
+                    </p>
+                </div>
+                <div className="relative w-12 h-12 flex items-center justify-center shrink-0">
+                    <svg 
+                        viewBox={`0 0 ${size} ${size}`} 
+                        className="absolute inset-0 w-full h-full -rotate-90"
+                    >
+                        <circle cx={center} cy={center} r={radius} stroke="#f3f4f6" strokeWidth={strokeWidth} fill="none" />
+                        <circle 
+                            cx={center} cy={center} r={radius} 
+                            stroke={activeTab === 'READING' ? '#4F95FF' : '#FF6B6B'} 
+                            strokeWidth={strokeWidth} fill="none" 
+                            strokeDasharray={circumference}
+                            strokeDashoffset={dashOffset}
+                            strokeLinecap="round"
+                            className="transition-all duration-700 ease-out"
+                        />
+                    </svg>
+                    <span className="text-[9px] font-black text-gray-600 z-10">{progressPercent}%</span>
+                </div>
+            </div>
+          </div>
 
-        {/* Grid */}
-        <div className="flex-1 px-4 pb-20">
-          <div className="max-w-md mx-auto grid grid-cols-5 gap-3">
+          {/* 練習開始ボタン */}
+          <div className="mb-8 shrink-0">
+            <button 
+                onClick={handleStartGame}
+                disabled={loading}
+                className={`w-full text-white py-4 rounded-2xl font-black shadow-md active:scale-95 active:shadow-none active:translate-y-1 transition-all flex items-center justify-center gap-2 ${
+                    activeTab === 'READING' ? 'bg-brand-blue shadow-[0_5px_0_#2b6cb0]' : 'bg-brand-pink shadow-[0_5px_0_#c53030]'
+                } disabled:opacity-50`}
+            >
+                {loading ? <span className="animate-spin text-xl">⌛</span> : (activeTab === 'READING' ? <BookOpen size={24} strokeWidth={3}/> : <PenTool size={24} strokeWidth={3}/>)}
+                <span className="text-xl">
+                    {activeTab === 'READING' ? 'よむ れんしゅう' : 'かく れんしゅう'}
+                </span>
+            </button>
+          </div>
+
+          {/* 漢字一覧グリッド */}
+          <div className="grid grid-cols-5 gap-3">
               {fullList.map((char) => {
                   const isMastered = masteredMap.has(char);
                   return (
@@ -181,8 +200,8 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
                           key={char} 
                           className={`aspect-square rounded-2xl flex items-center justify-center text-2xl font-black border-2 transition-all relative ${
                               isMastered 
-                              ? 'bg-white text-gray-800 shadow-sm border-brand-green' 
-                              : 'bg-gray-100 border-gray-200 text-gray-300'
+                              ? 'bg-white text-gray-800 shadow-sm border-brand-green animate-fade-in' 
+                              : 'bg-gray-50 border-gray-100 text-gray-200'
                           }`}
                       >
                           {char}

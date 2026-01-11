@@ -1,13 +1,15 @@
 
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { KanjiData, DrawingResult } from '../types';
 import { GRADE_KANJI_DATA_MAP, getKanjiListForGrade } from '../data/gradeKanji';
 
+// SDKの初期化
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-const modelName = 'gemini-2.5-flash';
+// ガイドラインに基づき、基本的なテキスト・画像認識タスクに適したモデル 'gemini-3-flash-preview' を使用
+const modelName = 'gemini-3-flash-preview';
 
-// Schema for evaluating handwriting
-const handwritingSchema: Schema = {
+// 手書き評価用のスキーマ定義
+const handwritingSchema = {
   type: Type.OBJECT,
   properties: {
     isCorrect: { type: Type.BOOLEAN, description: "True if the drawing resembles the target kanji" },
@@ -17,23 +19,22 @@ const handwritingSchema: Schema = {
   required: ["isCorrect", "feedback", "confidence"]
 };
 
-// Helper to clean Markdown code blocks from JSON response
+// JSONレスポンスからMarkdownの装飾を削除するヘルパー
 const cleanJsonText = (text: string): string => {
   return text.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
 };
 
 /**
- * Fetches details for specific characters.
- * Checks LOCAL data first for ANY grade, then falls back to API.
+ * 指定された漢字の詳細情報を取得します。
+ * ローカルデータを優先し、不足分のみAPIで取得するハイブリッド方式です。
  */
 export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData[]> => {
     const localResults: KanjiData[] = [];
     const missingChars: string[] = [];
 
-    // 1. Search in ALL local rich data
+    // 1. 全学年のローカルデータから検索
     characters.forEach(char => {
         let found: KanjiData | undefined;
-        // Check all grades for this character
         for (const gradeData of Object.values(GRADE_KANJI_DATA_MAP)) {
             found = gradeData.find(k => k.character === char);
             if (found) break;
@@ -46,14 +47,13 @@ export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData
         }
     });
 
-    // If we have everything locally, return immediately
     if (missingChars.length === 0) {
         return localResults;
     }
 
-    // 2. Fetch missing characters from API
+    // 2. ローカルにない漢字のみAPIで取得
     try {
-        const kanjiListSchema: Schema = {
+        const kanjiListSchema = {
           type: Type.ARRAY,
           items: {
             type: Type.OBJECT,
@@ -74,6 +74,7 @@ export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData
         Meaning should be simple for elementary school students.
         `;
     
+        // SDK ガイドライン: response.text プロパティを直接使用
         const response = await ai.models.generateContent({
           model: modelName,
           contents: prompt,
@@ -94,7 +95,6 @@ export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData
 
     } catch (error) {
         console.error("Error fetching kanji details:", error);
-        // Fallback for missing ones if API fails
         const fallbacks = missingChars.map(char => ({
             character: char,
             onyomi: [],
@@ -107,22 +107,16 @@ export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData
 };
 
 /**
- * Generates a list of Kanji questions.
- * Uses a hybrid approach: Local List + Local Rich Data + API Fill if needed.
+ * 漢字の問題リストを生成します。
  */
 export const fetchKanji = async (count: number = 5, excludeChars: string[] = [], grade: number = 1): Promise<KanjiData[]> => {
-  // 1. Get the list of characters for this grade (Rich + Simple)
   const fullCharList = getKanjiListForGrade(grade);
   
   if (fullCharList.length > 0) {
-      // Filter out excluded characters
       const available = fullCharList.filter(c => !excludeChars.includes(c));
-      
-      // Shuffle
       const shuffled = [...available].sort(() => 0.5 - Math.random());
       const selectedChars = shuffled.slice(0, count);
 
-      // If ran out, fill with randoms
       if (selectedChars.length < count) {
            const remainder = count - selectedChars.length;
            const fillers = fullCharList
@@ -132,13 +126,11 @@ export const fetchKanji = async (count: number = 5, excludeChars: string[] = [],
            selectedChars.push(...fillers);
       }
 
-      // 2. Fetch details (will use local rich data if available, or API if simple list)
       return fetchKanjiDetails(selectedChars);
   }
 
-  // 3. Fallback: If no list exists for this grade (shouldn't happen for 1-6), ask API to generate
   try {
-    const kanjiListSchema: Schema = {
+    const kanjiListSchema = {
       type: Type.ARRAY,
       items: {
         type: Type.OBJECT,
@@ -180,7 +172,6 @@ export const fetchKanji = async (count: number = 5, excludeChars: string[] = [],
     throw new Error("No data returned");
   } catch (error) {
     console.error("Error fetching kanji:", error);
-    // Fallback to random Grade 1 data
     const g1 = GRADE_KANJI_DATA_MAP[1];
     const shuffled = [...g1].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);
@@ -188,8 +179,7 @@ export const fetchKanji = async (count: number = 5, excludeChars: string[] = [],
 };
 
 /**
- * Evaluates handwriting.
- * This still uses the API as it requires Vision capabilities.
+ * 手書き文字の認識と評価を行います。
  */
 export const evaluateHandwriting = async (base64Image: string, targetKanji: string): Promise<DrawingResult> => {
   try {
@@ -201,6 +191,7 @@ export const evaluateHandwriting = async (base64Image: string, targetKanji: stri
     If it looks mostly correct, say yes.
     Give feedback in simple, polite Japanese for a child.`;
 
+    // SDK ガイドライン: マルチパート（画像+テキスト）の形式で送信
     const response = await ai.models.generateContent({
       model: modelName,
       contents: {

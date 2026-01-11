@@ -40,6 +40,28 @@
                 pink: '#FF6B6B',
                 cream: '#FFF5E4'
               }
+            },
+            animation: {
+              'piko-jump-small': 'pikoJumpSmall 1.2s infinite cubic-bezier(0.45, 0.05, 0.55, 0.95)',
+              'shine-sweep': 'shineSweep 2.5s linear infinite',
+              'sparkle-vivid': 'sparkleVivid 3s infinite ease-in-out',
+            },
+            keyframes: {
+              pikoJumpSmall: {
+                '0%, 100%': { transform: 'translateY(0) scale(1, 1)' },
+                '10%': { transform: 'translateY(2px) scale(1.03, 0.97)' },
+                '25%': { transform: 'translateY(-15px) scale(0.98, 1.02)' },
+                '40%': { transform: 'translateY(0) scale(1.05, 0.95)' },
+                '50%': { transform: 'translateY(0) scale(1, 1)' },
+              },
+              shineSweep: {
+                '0%': { transform: 'translateX(-300%) skewX(-30deg)' },
+                '100%': { transform: 'translateX(300%) skewX(-30deg)' },
+              },
+              sparkleVivid: {
+                '0%, 100%': { opacity: 0, transform: 'scale(0) rotate(0deg)' },
+                '50%': { opacity: 1, transform: 'scale(1.2) rotate(180deg)' },
+              }
             }
           }
         }
@@ -54,7 +76,7 @@
       }
       html, body {
         color-scheme: light !important;
-        position: fixed;
+        position: relative;
         width: 100%;
         height: 100%;
         margin: 0;
@@ -66,6 +88,7 @@
       }
       #root {
         width: 100%;
+        height: 100%;
         height: 100dvh;
         display: flex;
         flex-direction: column;
@@ -73,33 +96,66 @@
         position: relative;
         background-color: #FFF5E4 !important;
       }
-      .safe-top { padding-top: env(safe-area-inset-top); }
-      .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+      
+      /* 3D感のある、鮮やかな宝石ボタン（土台なし） */
+      .vivid-jewel-button {
+        background: radial-gradient(circle at 50% 30%, #FF9A8B 0%, #FF6A88 40%, #D4145A 100%);
+        border-radius: 3.5rem;
+        position: relative;
+        border: 6px solid #FFFFFF;
+        box-shadow: 
+          inset 0 8px 15px rgba(255,255,255,0.8),
+          inset 0 -12px 30px rgba(0,0,0,0.5),
+          0 10px 25px rgba(212, 20, 90, 0.25),
+          0 10px 0 #9B1C3D; /* 3D側面 */
+        z-index: 10;
+        transition: transform 0.1s cubic-bezier(0.17, 0.67, 0.83, 0.67);
+      }
+
+      .vivid-jewel-button:active {
+        transform: translateY(8px) scale(0.98, 0.95) !important;
+        box-shadow: 
+          inset 0 8px 15px rgba(255,255,255,0.8),
+          inset 0 -12px 30px rgba(0,0,0,0.5),
+          0 2px 0 #9B1C3D;
+      }
+
+      /* ボタン表面の極上の輝き */
+      .jewel-rim-light {
+        position: absolute;
+        top: 6%;
+        left: 10%;
+        width: 80%;
+        height: 42%;
+        background: linear-gradient(to bottom, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.2) 100%);
+        border-radius: 3.5rem 3.5rem 50% 50%;
+        pointer-events: none;
+        z-index: 15;
+        border-top: 2px solid #FFFFFF;
+      }
+
+      .vivid-sparkle-particle {
+        position: absolute;
+        background-color: #FFFFFF;
+        clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+        pointer-events: none;
+        z-index: 50;
+        filter: drop-shadow(0 0 8px rgba(255,255,255,0.9));
+      }
+
+      .animate-fade-in { animation: fadeIn 0.6s ease-out forwards; }
       @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
+        from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
       }
-      .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-      @keyframes dash-move { to { stroke-dashoffset: -24; } }
-      .animate-dash-move { animation: dash-move 1s linear infinite; }
-      @keyframes highlight-pulse {
-        0% { box-shadow: 0 0 0 0 rgba(107, 203, 119, 0.4); transform: scale(1); }
-        50% { box-shadow: 0 0 0 15px rgba(107, 203, 119, 0); transform: scale(1.02); }
-        100% { box-shadow: 0 0 0 0 rgba(107, 203, 119, 0); transform: scale(1); }
+
+      /* スクロールバー非表示 (Firefox用) */
+      .no-scrollbar {
+        scrollbar-width: none;
       }
-      .animate-highlight-pulse { animation: highlight-pulse 2s infinite ease-in-out; }
-      @keyframes confetti-fall {
-        0% { transform: translateY(-10vh) translateX(0) rotate(0deg); opacity: 1; }
-        100% { transform: translateY(110vh) translateX(20vw) rotate(720deg); opacity: 0; }
-      }
-      .confetti {
-        position: absolute;
-        width: 12px;
-        height: 12px;
-        top: -20px;
-        z-index: 100;
-        pointer-events: none;
-        animation: confetti-fall 3s linear forwards;
+      /* スクロールバー非表示 (Chrome, Safari用) */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
       }
     </style>
   <script type="importmap">

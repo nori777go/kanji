@@ -46,33 +46,36 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSave
         }
       />
       
-      <div className="flex-1 flex flex-col items-center justify-center gap-6 w-full max-w-md mx-auto p-4 overflow-y-auto">
-        <h2 className="text-4xl font-black text-brand-blue text-center">
+      {/* justify-center を justify-start に変更し、pt-6 を追加して上部の切れを防止 */}
+      <div className="flex-1 flex flex-col items-center justify-start gap-5 w-full max-w-md mx-auto px-6 pt-6 pb-8 overflow-y-auto">
+        <h2 className="text-3xl font-black text-brand-blue text-center animate-fade-in shrink-0">
           {scorePercentage === 100 ? 'パーフェクト！' : scorePercentage >= 80 ? 'すごい！' : 'がんばったね！'}
         </h2>
         
-        <div className="text-9xl mb-2 relative">
+        <div className="text-8xl mb-1 relative shrink-0">
           {scorePercentage === 100 ? '👑' : scorePercentage >= 60 ? '🎉' : '🌱'}
           {scorePercentage === 100 && (
              <div className="absolute top-0 right-0 animate-ping opacity-75">✨</div>
           )}
         </div>
 
-        <div className="bg-white p-6 rounded-3xl shadow-sm border-2 border-brand-yellow w-full text-center">
-           <p className="text-2xl font-bold text-gray-700 mb-2">
+        <div className="bg-white p-5 rounded-[2.2rem] shadow-sm border-2 border-brand-yellow w-full text-center shrink-0">
+           <p className="text-xl font-bold text-gray-700 mb-1.5">
               {result.total} もん ちゅう {result.score} もん せいかい！
            </p>
            {result.incorrectKanji.length > 0 && (
-              <p className="text-brand-pink font-bold text-sm">
-                 ニガテ リスト に いれたよ： <br/>
-                 {result.incorrectKanji.map(k => k.character).join(', ')}
-              </p>
+              <div className="text-brand-pink font-bold text-[11px] leading-tight">
+                 <p className="mb-1 opacity-80 uppercase tracking-tighter">ニガテ リスト に いれたよ：</p>
+                 <p className="text-sm tracking-widest">
+                    {result.incorrectKanji.map(k => k.character).join(', ')}
+                 </p>
+              </div>
            )}
         </div>
 
         {!currentUser && !isSaved ? (
-          <div className="w-full bg-white border-2 border-brand-orange rounded-3xl p-6 animate-fade-in shadow-sm">
-            <label className="block text-center font-bold text-gray-600 mb-2">
+          <div className="w-full bg-white border-2 border-brand-orange rounded-[2.2rem] p-5 animate-fade-in shadow-sm shrink-0">
+            <label className="block text-center font-bold text-gray-600 mb-2 text-sm">
               おなまえ を おしえてね
             </label>
             <div className="flex gap-2">
@@ -81,7 +84,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSave
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   placeholder="おなまえ"
-                  className="flex-1 p-3 text-xl font-bold rounded-xl border-2 border-gray-300 focus:border-brand-orange outline-none text-center"
+                  className="flex-1 p-3 text-lg font-bold rounded-xl border-2 border-gray-300 focus:border-brand-orange outline-none text-center min-w-0"
                />
                <button 
                   onClick={handleSave}
@@ -91,28 +94,28 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSave
                   <Save size={24} />
                </button>
             </div>
-            <p className="text-xs text-center text-gray-400 mt-2">
+            <p className="text-[9px] text-center text-gray-400 mt-2 font-bold uppercase tracking-wider">
                ほぞん すると、コレクション に ついか されるよ！
             </p>
           </div>
         ) : (
-          <div className="w-full bg-green-100 border-2 border-green-400 text-green-700 rounded-3xl p-4 text-center font-bold animate-pulse">
+          <div className="w-full bg-brand-green/10 border-2 border-brand-green text-brand-green rounded-[2.2rem] p-4 text-center font-black animate-pulse shrink-0 text-sm">
                {result.mode === 'READING' ? 'よみ' : 'かき'} の きろく を ほぞん しました！
           </div>
         )}
 
-        <div className="flex gap-4 mt-4 w-full pb-8">
+        <div className="flex gap-3 w-full shrink-0 pb-4">
           <button 
               onClick={onBack}
-              className="flex-1 py-4 bg-gray-400 text-white rounded-2xl font-black shadow-lg active:scale-95 transition flex justify-center items-center gap-2"
+              className="flex-1 py-4 bg-gray-400 text-white rounded-2xl font-black shadow-lg active:scale-95 transition flex justify-center items-center gap-2 text-sm"
           >
-              <ArrowLeft size={20} /> メニュー
+              <ArrowLeft size={18} /> メニュー
           </button>
           <button 
               onClick={onRetry}
-              className="flex-1 py-4 bg-brand-green text-white rounded-2xl font-black shadow-lg active:scale-95 transition flex justify-center items-center gap-2"
+              className="flex-1 py-4 bg-brand-green text-white rounded-2xl font-black shadow-lg active:scale-95 transition flex justify-center items-center gap-2 text-sm"
           >
-              <RefreshCw size={20} /> つぎへ
+              <RefreshCw size={18} /> つぎへ
           </button>
         </div>
       </div>

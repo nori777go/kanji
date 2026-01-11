@@ -177,89 +177,94 @@ const WritingMode: React.FC<WritingModeProps> = ({ currentUser, initialKanji, ex
         }
       />
 
-      <div className="w-full flex justify-center items-center gap-2 p-2 text-brand-blue text-sm font-bold">
-          <span className="bg-brand-blue text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase">{grade}ねんせい</span>
-          <Star className="fill-brand-blue" size={14}/>
-          <span className="text-xs font-black tracking-widest">{currentIndex + 1} / {kanjiList.length}</span>
+      <div className="shrink-0 w-full flex justify-center items-center gap-2 p-1.5 text-brand-blue text-sm font-bold">
+          <span className="bg-brand-blue text-white text-[9px] px-2 py-0.5 rounded-full font-black uppercase">{grade}ねんせい</span>
+          <Star className="fill-brand-blue" size={12}/>
+          <span className="text-[10px] font-black tracking-widest">{currentIndex + 1} / {kanjiList.length}</span>
       </div>
 
-      <div className="flex-1 w-full flex flex-col items-center justify-start px-4 gap-3 overflow-y-auto pb-6">
-        <div className="bg-white px-6 py-2 rounded-2xl shadow-sm border-2 border-brand-pink w-full max-w-[340px] text-center shrink-0">
+      <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-start px-4 gap-1.5 overflow-y-auto pb-4 scrolling-touch">
+        {/* カードの上下パディングを py-2 から py-1.5 へ、丸みを 2xl から xl へ */}
+        <div className="bg-white px-4 py-1.5 rounded-xl shadow-sm border-2 border-brand-pink w-full max-w-[340px] text-center shrink-0">
             <div className="flex items-center justify-center gap-2">
-                <span className="text-[10px] font-black text-gray-400 tracking-tighter shrink-0 uppercase">
+                <span className="text-[9px] font-black text-gray-400 tracking-tighter shrink-0 uppercase">
                     {result ? 'せいかい：' : 'これをかいて：'}
                 </span>
                 <div className="flex items-baseline gap-1">
-                    <span className={`font-black text-brand-pink ${result ? 'text-xl' : 'text-3xl'}`}>
+                    <span className={`font-black text-brand-pink ${result ? 'text-lg' : 'text-2xl'}`}>
                         {currentKanji.kunyomi[0] || currentKanji.onyomi[0]}
                     </span>
                     {result && (
-                        <span className="text-4xl font-black text-brand-pink animate-fade-in">
+                        <span className="text-3xl font-black text-brand-pink animate-fade-in">
                             ({currentKanji.character})
                         </span>
                     )}
                 </div>
             </div>
-            <div className="text-[10px] text-gray-400 font-bold leading-tight mt-0.5">
+            <div className="text-[9px] text-gray-400 font-bold leading-tight">
                 いみ: {currentKanji.meaning}
             </div>
         </div>
 
+        {/* ボタンの py-4 を py-2.5 に縮小。テキストサイズも 2xl から xl へ */}
         <div className="w-full max-w-[300px] shrink-0">
           <button
             onClick={handleClear}
             disabled={checking || !!result}
-            className="w-full py-4 bg-brand-green text-white text-2xl font-black rounded-2xl shadow-[0_6px_0_#38a169] active:shadow-none active:translate-y-[6px] transition-all disabled:opacity-30 flex justify-center items-center gap-2"
+            className="w-full py-2.5 bg-brand-green text-white text-xl font-black rounded-xl shadow-[0_4px_0_#38a169] active:shadow-none active:translate-y-[4px] transition-all disabled:opacity-30 flex justify-center items-center gap-2"
           >
-            <Eraser size={24} strokeWidth={3} />
+            <Eraser size={20} strokeWidth={3} />
             ぜんぶけす
           </button>
         </div>
 
-        <div className="relative shrink-0">
+        {/* キャンバス周辺の余白を最小化 */}
+        <div className="relative shrink-0 my-0.5">
             <DrawingCanvas forwardRef={canvasRef} width={300} height={300} />
             {checking && (
                 <div className="absolute inset-[4px] bg-white/80 flex flex-col items-center justify-center rounded-[24px] z-10 backdrop-blur-[2px]">
                     <div className="flex flex-col items-center animate-bounce text-brand-blue">
-                        <CheckCircle size={48} />
-                        <span className="font-black mt-2 text-sm">チェック中...</span>
+                        <CheckCircle size={40} />
+                        <span className="font-black mt-1 text-[12px]">チェック中...</span>
                     </div>
                 </div>
             )}
         </div>
 
+        {/* 決定ボタンの py-4 を py-3 に縮小 */}
         <div className="w-full max-w-[300px] shrink-0">
             {!result ? (
                 <button
                     onClick={handleCheck}
                     disabled={checking}
-                    className="w-full py-4 bg-brand-orange text-white text-2xl font-black rounded-2xl shadow-[0_6px_0_#c05621] active:shadow-none active:translate-y-[6px] transition-all disabled:opacity-50"
+                    className="w-full py-3 bg-brand-orange text-white text-xl font-black rounded-xl shadow-[0_4px_0_#c05621] active:shadow-none active:translate-y-[4px] transition-all disabled:opacity-50"
                 >
                     できた！
                 </button>
             ) : (
                 <button
                     onClick={handleNext}
-                    className="w-full py-4 bg-brand-blue text-white text-2xl font-black rounded-2xl shadow-[0_6px_0_#2b6cb0] active:shadow-none active:translate-y-[6px] transition-all flex justify-center items-center gap-2"
+                    className="w-full py-3 bg-brand-blue text-white text-xl font-black rounded-xl shadow-[0_4px_0_#2b6cb0] active:shadow-none active:translate-y-[4px] transition-all flex justify-center items-center gap-2"
                 >
-                    つぎへ <ArrowRight size={24} strokeWidth={3} />
+                    つぎへ <ArrowRight size={20} strokeWidth={3} />
                 </button>
             )}
         </div>
 
-        <div className="w-full max-w-[340px]">
+        {/* フィードバック部分のパディングを削減 */}
+        <div className="w-full max-w-[340px] shrink-0">
             {result ? (
-                <div className={`w-full p-3 rounded-xl border-l-4 shadow-sm animate-fade-in flex items-start gap-3 ${result.correct ? 'bg-brand-green/10 border-brand-green' : 'bg-brand-pink/10 border-brand-pink'}`}>
-                    <span className="text-2xl shrink-0">{result.correct ? '💮' : '🤔'}</span>
+                <div className={`w-full p-2.5 rounded-xl border-l-4 shadow-sm animate-fade-in flex items-start gap-2.5 ${result.correct ? 'bg-brand-green/10 border-brand-green' : 'bg-brand-pink/10 border-brand-pink'}`}>
+                    <span className="text-xl shrink-0">{result.correct ? '💮' : '🤔'}</span>
                     <div className="min-w-0">
-                        <p className="text-xs font-black text-gray-800 leading-tight mb-0.5">{result.correct ? 'すごい！' : 'おしい！'}</p>
-                        <p className="text-[10px] text-gray-600 font-bold leading-normal break-words">
+                        <p className="text-[11px] font-black text-gray-800 leading-tight mb-0.5">{result.correct ? 'すごい！' : 'おしい！'}</p>
+                        <p className="text-[9px] text-gray-600 font-bold leading-normal break-words">
                             {result.msg}
                         </p>
                     </div>
                 </div>
             ) : (
-                <div className="text-center text-[10px] text-gray-400 font-bold animate-pulse py-2">
+                <div className="text-center text-[9px] text-gray-400 font-bold animate-pulse py-1">
                     ていねいに かいてね！
                 </div>
             )}

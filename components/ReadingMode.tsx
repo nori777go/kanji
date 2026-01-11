@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { KanjiData, GameResult } from '../types';
 import { fetchKanji } from '../services/geminiService';
-import { ArrowRight, HelpCircle, ArrowLeft } from 'lucide-react';
+import { ArrowRight, HelpCircle, ArrowLeft, Star } from 'lucide-react';
 import ResultScreen from './ResultScreen';
 import { isLooseMatch } from '../utils/kana';
 import { GlobalHeader } from './Logo';
@@ -149,16 +149,18 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
         }
       />
       
-      <div className="w-full flex justify-center items-center gap-2 p-2 text-brand-orange font-bold">
-          <span className="bg-brand-orange text-white text-[10px] px-2 py-0.5 rounded-full font-black uppercase">{grade}ねんせい</span>
-          <span className="text-sm font-black tracking-widest">{currentIndex + 1} / {kanjiList.length}</span>
+      <div className="shrink-0 w-full flex justify-center items-center gap-2 p-1.5 text-brand-orange font-bold">
+          <span className="bg-brand-orange text-white text-[9px] px-2 py-0.5 rounded-full font-black uppercase">{grade}ねんせい</span>
+          <Star className="fill-brand-orange" size={12}/>
+          <span className="text-[10px] font-black tracking-widest">{currentIndex + 1} / {kanjiList.length}</span>
       </div>
 
-      <div className="flex-1 w-full overflow-y-auto px-6 py-2 flex flex-col items-center justify-start gap-4">
-        <div className="flex flex-col items-center gap-4 w-full max-w-[300px] py-2">
+      <div className="flex-1 min-h-0 w-full overflow-y-auto px-6 flex flex-col items-center justify-start gap-1 pb-6 scrolling-touch">
+        <div className="flex flex-col items-center gap-2 w-full max-w-[300px]">
             
-            <div className="relative shrink-0">
-                <div className="w-40 h-40 sm:w-56 sm:h-56 bg-white rounded-[32px] shadow-[0_8px_0_rgba(0,0,0,0.1)] flex items-center justify-center text-7xl sm:text-8xl font-black text-gray-800 border-4 border-brand-orange transition-all">
+            {/* 漢字表示エリア */}
+            <div className="relative shrink-0 mt-1">
+                <div className="w-36 h-36 bg-white rounded-[28px] shadow-[0_6px_0_rgba(0,0,0,0.1)] flex items-center justify-center text-7xl font-black text-gray-800 border-4 border-brand-orange transition-all">
                 {currentKanji.character}
                 </div>
                 {feedback === 'correct' && (
@@ -169,16 +171,9 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
                 )}
             </div>
 
-            {feedback === 'incorrect' && (
-                <div className="bg-white p-3 rounded-2xl border-4 border-brand-blue w-full animate-fade-in shadow-lg text-center shrink-0">
-                    <p className="text-gray-400 text-[10px] font-bold mb-1 uppercase tracking-widest">こたえ</p>
-                    <p className="text-2xl font-black text-brand-blue leading-tight">{currentKanji.kunyomi.join('・')}</p>
-                    <p className="text-lg font-black text-brand-blue opacity-80">{currentKanji.onyomi.join('・')}</p>
-                </div>
-            )}
-
-            <div className="w-full space-y-2 shrink-0">
-                <label className="block text-center text-base font-black text-gray-600">
+            {/* 入力欄 */}
+            <div className="w-full space-y-1 shrink-0 mt-1">
+                <label className="block text-center text-[12px] font-black text-gray-600">
                     よみかた を かいてね
                 </label>
                 <input
@@ -192,31 +187,47 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
                     autoComplete="off"
                     autoCorrect="off"
                     autoCapitalize="off"
-                    className={`w-full p-4 text-center text-3xl font-black rounded-2xl border-4 shadow-xl transition-all ${
+                    className={`w-full p-3 text-center text-2xl font-black rounded-xl border-4 shadow-lg transition-all ${
                         feedback === 'idle' ? 'border-brand-yellow bg-white' : 'border-gray-200 bg-gray-50 text-gray-400'
                     } focus:border-brand-orange focus:outline-none`}
                     placeholder="ひらがな"
                 />
             </div>
 
+            {/* 操作ボタン */}
             <div className="w-full mt-1 shrink-0">
                 {feedback === 'idle' ? (
                     <button
                         onClick={handleCheck}
-                        className="w-full py-4 bg-brand-blue text-white text-xl font-black rounded-2xl shadow-[0_6px_0_#2b6cb0] active:shadow-none active:translate-y-[6px] transition-all"
+                        className="w-full py-3 bg-brand-blue text-white text-xl font-black rounded-xl shadow-[0_4px_0_#2b6cb0] active:shadow-none active:translate-y-[4px] transition-all"
                     >
                         こたえあわせ！
                     </button>
                 ) : (
                     <button
                         onClick={handleNext}
-                        className="w-full py-4 bg-brand-green text-white text-xl font-black rounded-2xl shadow-[0_6px_0_#38a169] active:shadow-none active:translate-y-[6px] transition-all flex justify-center items-center gap-2"
+                        className="w-full py-3 bg-brand-green text-white text-xl font-black rounded-xl shadow-[0_4px_0_#38a169] active:shadow-none active:translate-y-[4px] transition-all flex justify-center items-center gap-2"
                     >
-                        つぎへ すすむ <ArrowRight size={24} strokeWidth={3} />
+                        つぎへ すすむ <ArrowRight size={20} strokeWidth={3} />
                     </button>
                 )}
             </div>
-            <div className="h-12 shrink-0"></div>
+
+            {/* 「こたえ」表示を下部に移動 */}
+            {feedback === 'incorrect' && (
+                <div className="bg-white p-3 rounded-2xl border-4 border-brand-blue w-full animate-fade-in shadow-md text-center shrink-0 mt-3">
+                    <p className="text-gray-400 text-[9px] font-bold mb-0.5 uppercase tracking-widest">こたえ</p>
+                    <div className="flex flex-col gap-0.5">
+                        <p className="text-xl font-black text-brand-blue leading-tight">{currentKanji.kunyomi.join('・')}</p>
+                        {currentKanji.onyomi.length > 0 && (
+                          <p className="text-sm font-black text-brand-blue opacity-70">{currentKanji.onyomi.join('・')}</p>
+                        )}
+                    </div>
+                    <p className="text-[10px] text-gray-500 font-bold mt-1.5 leading-tight opacity-80 italic">
+                        いみ: {currentKanji.meaning}
+                    </p>
+                </div>
+            )}
         </div>
       </div>
     </div>
