@@ -1,19 +1,17 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { generateGeminiContent } from "./geminiClient";
 import { KanjiData, DrawingResult } from '../types';
 import { GRADE_KANJI_DATA_MAP, getKanjiListForGrade } from '../data/gradeKanji';
 import { getActiveApiKey } from './apiKeyStorage';
 import { evaluateKanjiLocally } from './localKanjiEvaluator';
 
-// コストが最も安く高速な軽量モデル 'gemini-3.1-flash-lite' を使用
-const modelName = 'gemini-3.1-flash-lite';
 
 // 手書き評価用のスキーマ定義
 const handwritingSchema = {
-  type: Type.OBJECT,
+  type: 'OBJECT',
   properties: {
-    isCorrect: { type: Type.BOOLEAN, description: "True if the drawing resembles the target kanji" },
-    feedback: { type: Type.STRING, description: "Encouraging feedback for a child in friendly Japanese" },
-    confidence: { type: Type.NUMBER, description: "Confidence score 0-100" }
+    isCorrect: { type: 'BOOLEAN', description: "True if the drawing resembles the target kanji" },
+    feedback: { type: 'STRING', description: "Encouraging feedback for a child in friendly Japanese" },
+    confidence: { type: 'NUMBER', description: "Confidence score 0-100" }
   },
   required: ["isCorrect", "feedback", "confidence"]
 };
@@ -21,66 +19,6 @@ const handwritingSchema = {
 // JSONレスポンスからMarkdownの装飾を削除するヘルパー
 const cleanJsonText = (text: string): string => {
   return text.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '').trim();
-};
-
-const ENCOURAGING_FEEDBACKS = [
-  "とても じょうずにかけているよ！",
-  "かっこよく かけたね！そのちょうし！",
-  "はなまる！ていねいに かけたね！",
-  "すばらしい！よくがんばったね！",
-  "きれいな かたちで かけたね！",
-  "ばっちり！つぎの かんじも いってみよう！"
-];
-
-const getRandomEncouragement = (): string => {
-  return ENCOURAGING_FEEDBACKS[Math.floor(Math.random() * ENCOURAGING_FEEDBACKS.length)];
-};
-
-/**
- * キャンバス画像（base64）の描画量を簡易解析して、白紙やごく僅かな点を検出
- */
-const analyzeDrawnStrokes = async (base64Image: string): Promise<{ darkPixels: number; hasDrawing: boolean }> => {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined') {
-      resolve({ darkPixels: 500, hasDrawing: true });
-      return;
-    }
-    const img = new Image();
-    img.onload = () => {
-      try {
-        const offCanvas = document.createElement('canvas');
-        offCanvas.width = img.width || 300;
-        offCanvas.height = img.height || 300;
-        const ctx = offCanvas.getContext('2d');
-        if (!ctx) {
-          resolve({ darkPixels: 500, hasDrawing: true });
-          return;
-        }
-        ctx.drawImage(img, 0, 0);
-        const imgData = ctx.getImageData(0, 0, offCanvas.width, offCanvas.height);
-        const data = imgData.data;
-        let darkCount = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          const r = data[i];
-          const g = data[i + 1];
-          const b = data[i + 2];
-          const a = data[i + 3];
-          // 非白かつ透明でないピクセルをカウント
-          if (a > 50 && (r < 200 || g < 200 || b < 200)) {
-            darkCount++;
-          }
-        }
-        // 80ピクセル以上の描画があれば線が引かれているとみなす
-        resolve({ darkPixels: darkCount, hasDrawing: darkCount > 80 });
-      } catch {
-        resolve({ darkPixels: 500, hasDrawing: true });
-      }
-    };
-    img.onerror = () => {
-      resolve({ darkPixels: 500, hasDrawing: true });
-    };
-    img.src = base64Image;
-  });
 };
 
 /**
@@ -114,25 +52,18 @@ export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData
   const activeKey = getActiveApiKey();
   if (activeKey) {
     try {
-      const ai = new GoogleGenAI({
-        apiKey: activeKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build'
-          }
-        }
-      });
+
 
       const kanjiListSchema = {
-        type: Type.ARRAY,
+        type: 'ARRAY',
         items: {
-          type: Type.OBJECT,
+          type: 'OBJECT',
           properties: {
-            character: { type: Type.STRING },
-            onyomi: { type: Type.ARRAY, items: { type: Type.STRING } },
-            kunyomi: { type: Type.ARRAY, items: { type: Type.STRING } },
-            meaning: { type: Type.STRING },
-            example: { type: Type.STRING }
+            character: { type: 'STRING' },
+            onyomi: { type: 'ARRAY', items: { type: 'STRING' } },
+            kunyomi: { type: 'ARRAY', items: { type: 'STRING' } },
+            meaning: { type: 'STRING' },
+            example: { type: 'STRING' }
           },
           required: ["character", "onyomi", "kunyomi", "meaning", "example"]
         }
@@ -144,14 +75,10 @@ export const fetchKanjiDetails = async (characters: string[]): Promise<KanjiData
       Meaning should be simple for elementary school students.
       `;
 
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: {
+      const response = await generateGeminiContent(activeKey, prompt, {
           responseMimeType: "application/json",
           responseSchema: kanjiListSchema,
           temperature: 0.3,
-        },
       });
 
       if (response.text) {
@@ -204,62 +131,24 @@ export const fetchKanji = async (count: number = 5, excludeChars: string[] = [],
 
 /**
  * 手書き文字の認識と評価を行います。
- * - 白紙チェック
- * - Google AI Studio APIキーがあればGeminiモデルで高精度評価
- * - APIキーがない場合や通信エラー時も自然で励みになるフィードバックを提供（オフラインモード等の機械的表示は排除）
+ * - AIの読み取り文字とお題を照合する
+ * - キー未設定、通信失敗、不確実な結果には得点を付けない
  */
 export const evaluateHandwriting = async (base64Image: string, targetKanji: string): Promise<DrawingResult> => {
-  // 1. Google AI Studio APIキーが存在する場合はGeminiで高精度採点
   const activeKey = getActiveApiKey();
-  if (activeKey) {
-    try {
-      const ai = new GoogleGenAI({
-        apiKey: activeKey,
-        httpOptions: {
-          headers: {
-            'User-Agent': 'aistudio-build'
-          }
-        }
-      });
-
-      const cleanBase64 = base64Image.replace(/^data:image\/(png|jpeg|jpg);base64,/, "");
-
-      const prompt = `You are a warm, supportive Japanese elementary school teacher evaluating a child's handwriting.
-Target Kanji: 「${targetKanji}」
-Task:
-1. Carefully check if the child drew the actual kanji character 「${targetKanji}」.
-2. If the user drew nothing, random scribbles, or only an incomplete stroke (such as just 1 line or a dot for a multi-stroke kanji), set isCorrect: false.
-3. If the user wrote the character and it recognizably resembles 「${targetKanji}」 (be lenient with slight stroke imperfections for children), set isCorrect: true.
-4. If it is clearly a different character or missing major parts, set isCorrect: false.
-5. Provide encouraging feedback in simple polite Japanese suitable for an elementary school child (1-2 sentences).`;
-
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: {
-          parts: [
-            { inlineData: { mimeType: "image/png", data: cleanBase64 } },
-            { text: prompt }
-          ]
-        },
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: handwritingSchema
-        }
-      });
-
-      if (response.text) {
-        const cleanedText = cleanJsonText(response.text);
-        const parsed = JSON.parse(cleanedText) as DrawingResult;
-        return {
-          ...parsed,
-          evaluatedBy: 'ai'
-        };
-      }
-    } catch (apiError) {
-      console.warn("Gemini API evaluation failed, falling back to local evaluation:", apiError);
+  if (!activeKey) return evaluateKanjiLocally(base64Image, targetKanji);
+  try {
+    const response = await generateGeminiContent(activeKey, {parts:[
+      {inlineData:{mimeType:'image/png',data:base64Image.replace(/^data:image\/(png|jpeg|jpg);base64,/, '')}},
+      {text:`Read the actual handwritten kanji first. Do not infer missing strokes from the target. Report recognizedCharacter as the single character you actually read, or empty if blank, scribbled, incomplete or uncertain. Then compare with target 「${targetKanji}」. Set isCorrect true only for the complete target character. A different character or missing major strokes is incorrect. Be kind about minor handwriting imperfections but never praise an incorrect character as correct. Return short Japanese feedback, confidence (0-100), recognizedCharacter and isCorrect.`}
+    ]}, {responseMimeType:'application/json', responseSchema:{...handwritingSchema,properties:{...handwritingSchema.properties,recognizedCharacter:{type:'STRING'}},required:[...handwritingSchema.required,'recognizedCharacter']}});
+    const parsed = JSON.parse(cleanJsonText(response.text));
+    if (typeof parsed.isCorrect !== 'boolean' || typeof parsed.recognizedCharacter !== 'string' || typeof parsed.confidence !== 'number' || !Number.isFinite(parsed.confidence) || parsed.confidence < 70) {
+      return {isCorrect:false,judged:false,feedback:'はっきり よみとれなかったよ。もういちど採点するか、書きなおしてみてね。',confidence:0,evaluatedBy:'ai'};
     }
+    const correct = parsed.isCorrect === true && parsed.recognizedCharacter.trim().normalize('NFC') === targetKanji.normalize('NFC');
+    return {isCorrect:correct,judged:true,feedback:correct ? 'はなまる！正しい かんじが かけたね！' : 'おしい！お手本と かたちを くらべて、もういちど かいてみよう！',confidence:Math.min(100,Math.max(0,parsed.confidence)),evaluatedBy:'ai'};
+  } catch (error) {
+    return {isCorrect:false,judged:false,feedback:error instanceof Error ? error.message : 'AIに接続できませんでした。もういちど採点してみてね。',confidence:0,evaluatedBy:'ai'};
   }
-
-  // 2. ローカル高精度判定（構造・グリッド・画数・形状照合）
-  return evaluateKanjiLocally(base64Image, targetKanji);
 };

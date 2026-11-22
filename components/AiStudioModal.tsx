@@ -46,7 +46,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({ isOpen, onClose })
     const trimmed = apiKey.trim();
     setStoredApiKey(trimmed);
     if (trimmed) {
-      setStatusMessage({ type: 'success', text: 'APIキーを保存しました！AIによる手書き採点が有効になりました。' });
+      setStatusMessage({ type: 'success', text: 'APIキーを保存しました。せつぞくテストで通信を確認できます。' });
       setTimeout(() => {
         onClose();
       }, 1000);
@@ -98,12 +98,12 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({ isOpen, onClose })
             )}
             <div>
               <p className="text-xs font-black text-gray-800">
-                {isConnected ? '🟢 Google AI Studioと接続中' : '⚪ れんしゅうモード（APIキー未設定）'}
+                {isConnected ? '🔑 APIキー保存済み（通信は接続テストで確認）' : '⚪ れんしゅうモード（自動採点なし）'}
               </p>
               <p className="text-[11px] text-gray-600 font-medium">
                 {isConnected 
                   ? 'Gemini 3.1 Flash-Lite による手書き文字のAI認識が有効です。' 
-                  : 'APIキーを設定しなくても、アプリ内で通常通り楽しく漢字練習ができます！'}
+                  : '漢字を書く練習はできます。正誤の自動採点にはAPIキーが必要です。'}
               </p>
             </div>
           </div>
@@ -122,7 +122,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({ isOpen, onClose })
             <label className="text-xs font-black text-gray-700 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <Key size={14} className="text-brand-orange" />
-                Gemini API キー (AIza...)
+                Gemini API キー（AQ.… / AIza…）
               </span>
               <button
                 type="button"
@@ -136,11 +136,11 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({ isOpen, onClose })
               type={showKey ? 'text' : 'password'}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder="AIzaSy..."
+              placeholder="Google AI Studioでコピーしたキー"
               className="w-full px-3.5 py-2.5 bg-gray-50 border-2 border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:border-brand-blue focus:bg-white transition"
             />
             <p className="text-[10px] text-gray-400">
-              ※ キーはご使用のブラウザ（ローカル保存）にのみ安全に保存され、外部サーバーへ送信されることはありません。
+              ※ キーはこのブラウザに保存され、接続テスト・AI採点時にGoogleのGemini APIへ送信されます。制作元のサーバーには保存しません。
             </p>
           </div>
 

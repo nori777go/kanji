@@ -35,7 +35,7 @@ const WritingModeContent: React.FC<WritingModeProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
-  const [result, setResult] = useState<{correct: boolean, msg: string, evaluatedBy?: 'ai' | 'local'} | null>(null);
+  const [result, setResult] = useState<{correct: boolean, judged?: boolean, msg: string, evaluatedBy?: 'ai' | 'local'} | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
   
   const [score, setScore] = useState(0);
@@ -99,11 +99,12 @@ const WritingModeContent: React.FC<WritingModeProps> = ({
       
       setResult({
         correct: feedback.isCorrect,
+        judged: feedback.judged !== false,
         msg: feedback.feedback,
         evaluatedBy: feedback.evaluatedBy
       });
 
-      if (feedback.isCorrect) {
+      if (feedback.isCorrect === true && feedback.judged !== false) {
         setScore(s => s + 1);
         setCorrectItems(prev => [...prev, currentKanji]);
         setShowConfetti(true);
@@ -113,13 +114,14 @@ const WritingModeContent: React.FC<WritingModeProps> = ({
         confettiTimerRef.current = setTimeout(() => {
           setShowConfetti(false);
         }, 3500);
-      } else {
+      } else if (feedback.judged !== false) {
         setIncorrectItems(prev => [...prev, currentKanji]);
       }
     } catch (err) {
       console.error("Handwriting evaluation error:", err);
       setResult({
         correct: false,
+        judged: false,
         msg: "はんてい で エラー が でました。もういちど かいてみてね！",
         evaluatedBy: 'local'
       });
@@ -283,6 +285,17 @@ const WritingModeContent: React.FC<WritingModeProps> = ({
             >
               できた！
             </button>
+          ) : result.judged === false ? (
+            <div className="flex flex-col gap-2">
+              <button onClick={handleCheck} disabled={checking}
+                className="w-full py-3 bg-brand-orange text-white text-base font-black rounded-xl disabled:opacity-50">
+                {checking ? '採点中...' : 'もういちど 採点する'}
+              </button>
+              <div className="flex gap-2">
+                {onAiSettingsClick && <button onClick={onAiSettingsClick} className="flex-1 py-2 bg-white text-brand-blue border rounded-xl text-xs font-bold">AIれんけい設定</button>}
+                <button onClick={handleNext} className="flex-1 py-2 bg-gray-200 text-gray-700 rounded-xl text-xs font-bold">採点せず つぎへ</button>
+              </div>
+            </div>
           ) : result.correct ? (
             <button
               onClick={handleNext}
@@ -315,13 +328,15 @@ const WritingModeContent: React.FC<WritingModeProps> = ({
         <div className="w-full max-w-[340px] shrink-0">
           {result ? (
             <div className={`w-full p-2.5 rounded-xl border-l-4 shadow-sm animate-fade-in flex items-start gap-2.5 ${result.correct ? 'bg-brand-green/10 border-brand-green' : 'bg-brand-pink/10 border-brand-pink'}`}>
-              <span className="text-xl shrink-0">{result.correct ? '💮' : '🤔'}</span>
+              <span className="text-xl shrink-0">{result.judged === false ? '⚠️' : result.correct ? '💮' : '🤔'}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-1 mb-0.5">
                   <p className="text-[11px] font-black text-gray-800 leading-tight">
-                    {result.correct ? 'すごい！' : 'おしい！'}
+                    {result.judged === false ? 'まだ採点できていません' : result.correct ? 'すごい！' : 'おしい！'}
                   </p>
-                  {result.evaluatedBy === 'ai' ? (
+                  {result.judged === false ? (
+                    <span className="text-[9px] font-black bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded-md shrink-0">採点なし</span>
+                  ) : result.evaluatedBy === 'ai' ? (
                     <span className="text-[9px] font-black bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-md shrink-0">
                       ✨ AIはんてい
                     </span>

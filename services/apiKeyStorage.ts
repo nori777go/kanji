@@ -1,12 +1,12 @@
-import { GoogleGenAI } from "@google/genai";
+import { generateGeminiContent } from "./geminiClient";
 
 const STORAGE_KEY = 'pikapika_gemini_api_key';
 
-// 環境変数のキー（AIzaSy... のような有効なGoogle AI Studioキーのみ受け入れる）
+// Google AI Studioの旧形式・新形式のキーに対応する。
 const getEnvApiKey = (): string | null => {
-  const envKey = (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
-  // AQ. などの内部OAuthトークンや短すぎる文字列は除外
-  if (envKey && envKey.startsWith('AIza')) {
+  const envKey = typeof process === 'undefined' ? '' : (process.env.API_KEY || process.env.GEMINI_API_KEY || '').trim();
+  // 接頭辞だけでは有効性は判定しない。接続テストで確認する。
+  if (envKey && /^(AIza|AQ\.)/.test(envKey)) {
     return envKey;
   }
   return null;
@@ -59,19 +59,7 @@ export const testApiKey = async (testKey: string): Promise<{ success: boolean; m
   }
 
   try {
-    const ai = new GoogleGenAI({
-      apiKey: keyToTest,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build'
-        }
-      }
-    });
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-lite',
-      contents: 'Say OK in one word'
-    });
+    const response = await generateGeminiContent(keyToTest, 'Say OK in one word');
 
     if (response.text) {
       return { success: true, message: 'Google AI Studioとの接続に成功しました！🎉' };
@@ -85,6 +73,6 @@ export const testApiKey = async (testKey: string): Promise<{ success: boolean; m
     if (errorMsg.includes('429')) {
       return { success: false, message: '利用制限（クォータ）に達しています。少し待ってから再度お試しください。' };
     }
-    return { success: false, message: `接続エラー: ${errorMsg}` };
+    return { success: false, message: errorMsg };
   }
 };

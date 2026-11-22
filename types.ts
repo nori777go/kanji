@@ -17,6 +17,7 @@ export enum GameMode {
 }
 
 export interface DrawingResult {
+  judged?: boolean;
   isCorrect: boolean;
   feedback: string;
   confidence: number;
