@@ -26,10 +26,10 @@ result=api(upload,pathlib.Path('release.tar.gz').read_bytes(),'POST')
 source={'cloudStorageSource':{'bucket':cfg['bucket'],'object':obj,'generation':result['generation']}}
 traffic=[]
 for t in old.get('trafficStatuses',[]):
-    if t.get('tag') == 'ci' or t.get('tag','').startswith('ci-'):continue
+    if t.get('tag') == 'ci0' or t.get('tag','').startswith('ci-'):continue
     traffic.append({k:v for k,v in t.items() if k in ['type','revision','percent','tag']})
 assert sum(int(t.get('percent',0)) for t in traffic)==100, 'Cannot preserve existing traffic'
-body={'name':name,'etag':old['etag'],'template':{'revision':revision,'serviceAccount':cfg['runtime'],'containers':[{'name':old['template']['containers'][0]['name'],'sourceCode':source,'command':['npm'],'args':['start']}]},'traffic':traffic+[{'type':'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION','revision':revision,'percent':0,'tag':'ci'}]}
+body={'name':name,'etag':old['etag'],'template':{'revision':revision,'serviceAccount':cfg['runtime'],'containers':[{'name':old['template']['containers'][0]['name'],'sourceCode':source,'command':['npm'],'args':['start']}]},'traffic':traffic+[{'type':'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION','revision':revision,'percent':0,'tag':'ci0'}]}
 mask='template.revision,template.serviceAccount,template.containers.sourceCode,template.containers.command,template.containers.args,traffic'
 dry='--deploy' not in sys.argv
 api(base+'?updateMask='+mask+('&validateOnly=true' if dry else ''),body)
@@ -40,7 +40,7 @@ def wait_ready():
     for _ in range(120):
         s=state()
         for t in s.get('trafficStatuses',[]):
-            if t.get('tag')=='ci' and t.get('revision','').split('/')[-1]==revision and t.get('uri'):
+            if t.get('tag')=='ci0' and t.get('revision','').split('/')[-1]==revision and t.get('uri'):
                 if s.get('latestReadyRevision','').split('/')[-1]==revision:return t['uri']
         if s.get('terminalCondition',{}).get('state')=='CONDITION_FAILED':
             raise RuntimeError('Cloud Run revision failed; old revision is still serving')
