@@ -18,10 +18,9 @@ interface ReadingModeProps {
   onBack: () => void;
   onShowHowToPlay: () => void;
   onLogoClick: () => void;
-  onStepChange?: () => void;
 }
 
-const ReadingModeContent: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick, onStepChange }) => {
+const ReadingModeContent: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick }) => {
   const [kanjiList, setKanjiList] = useState<KanjiData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
@@ -99,7 +98,6 @@ const ReadingModeContent: React.FC<ReadingModeProps> = ({ currentUser, initialKa
       setUserInput('');
       setShowConfetti(false);
       setCurrentIndex(prev => prev + 1);
-      if (onStepChange) onStepChange();
     }
   };
 

@@ -7,7 +7,6 @@ import HistoryScreen from './components/HistoryScreen';
 import CollectionScreen from './components/CollectionScreen';
 import UserSelectScreen from './components/UserSelectScreen';
 import HowToPlayScreen from './components/HowToPlayScreen';
-import AdBanner from './components/AdBanner';
 import { RotateCw, User, Book, Grid, Trophy, HelpCircle, BrainCircuit, Sparkles } from 'lucide-react';
 import { getUserProgress } from './services/storage';
 import { GlobalHeader } from './components/Logo';
@@ -69,10 +68,6 @@ function AppContent() {
     const modeInfo = MODE_GA_MAP[mode] || { path: `/${mode}`, title: String(mode) };
     trackPageView(modeInfo.path, `${modeInfo.title} | ピカピカかんじ`);
   }, [mode]);
-
-  const triggerAdRefresh = () => {
-    // 安定表示のためReactの再マウントによるremoveChildクラッシュを防止
-  };
 
   const handleUserSelect = (name: string) => {
       setCurrentUser(name);
@@ -153,7 +148,6 @@ function AppContent() {
                 initialKanji={gameKanjiList.length > 0 ? gameKanjiList : undefined}
                 excludeKanji={userData?.masteredReading.map(k => k.character)}
                 grade={selectedGrade}
-                onStepChange={triggerAdRefresh}
             />
         );
       case GameMode.WRITING:
@@ -167,7 +161,6 @@ function AppContent() {
                 initialKanji={gameKanjiList.length > 0 ? gameKanjiList : undefined}
                 excludeKanji={userData?.masteredWriting.map(k => k.character)}
                 grade={selectedGrade}
-                onStepChange={triggerAdRefresh}
                 onAiSettingsClick={() => setShowAiModal(true)}
             />
         );
@@ -314,8 +307,7 @@ function AppContent() {
       <AiStudioModal isOpen={showAiModal} onClose={() => setShowAiModal(false)} />
 
       <footer className="bg-brand-cream z-50 overflow-hidden shrink-0 border-t border-brand-yellow/20 !bg-[#FFF5E4]">
-        <AdBanner />
-        <div className="w-full pt-1 pb-4 safe-bottom text-center text-[8px] text-gray-400 font-bold leading-relaxed !bg-[#FFF5E4]">
+        <div className="w-full pt-2 pb-4 safe-bottom text-center text-[8px] text-gray-400 font-bold leading-relaxed !bg-[#FFF5E4]">
            <div className="bg-brand-cream space-y-1">
              <div className="flex justify-center items-center gap-4 mb-0.5">
                <a href="https://sumi-innovation.com/" target="_blank" rel="noopener noreferrer" className="hover:text-brand-orange underline decoration-brand-yellow/50 underline-offset-1">せいさくもと</a>
