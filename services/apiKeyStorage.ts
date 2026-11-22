@@ -70,13 +70,6 @@ export const testApiKey = async (testKey: string): Promise<{ success: boolean; m
       const control = await diagnoseGeminiRoute();
       return {success:false,message:`${err.message} / ${control}`};
     }
-    const errorMsg = err?.message || String(err);
-    if (errorMsg.includes('401') || errorMsg.includes('API key not valid')) {
-      return { success: false, message: 'APIキーが無効です。Google AI Studioで作成した正しいキーをご確認ください。' };
-    }
-    if (errorMsg.includes('429')) {
-      return { success: false, message: '利用制限（クォータ）に達しています。少し待ってから再度お試しください。' };
-    }
-    return { success: false, message: errorMsg };
+    return { success: false, message: err instanceof Error ? err.message : 'AIへの通信を完了できませんでした。' };
   }
 };
