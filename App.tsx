@@ -11,6 +11,31 @@ import AdBanner from './components/AdBanner';
 import { RotateCw, User, Book, Grid, Trophy, HelpCircle, BrainCircuit, Sparkles } from 'lucide-react';
 import { getUserProgress } from './services/storage';
 import { GlobalHeader } from './components/Logo';
+import { trackPageView } from './utils/analytics';
+import AiStudioModal from './components/AiStudioModal';
+import ErrorBoundary from './components/ErrorBoundary';
+
+const MODE_GA_MAP: Record<string, { path: string; title: string }> = {
+  [GameMode.USER_SELECT]: { path: '/user-select', title: 'ユーザーせんたく' },
+  [GameMode.MENU]: { path: '/menu', title: 'メインメニュー' },
+  [GameMode.READING]: { path: '/reading', title: 'よみモード' },
+  [GameMode.WRITING]: { path: '/writing', title: 'かきモード' },
+  [GameMode.HISTORY]: { path: '/history', title: 'きろく' },
+  [GameMode.HOW_TO_PLAY]: { path: '/how-to-play', title: 'あそびかた' },
+  'COLLECTION': { path: '/collection', title: 'かんじリスト' },
+};
+
+const getInitialMode = (): GameMode => {
+  if (typeof window === 'undefined') return GameMode.USER_SELECT;
+  const path = (window.location.pathname || '').toLowerCase();
+  if (path.includes('/writing')) return GameMode.WRITING;
+  if (path.includes('/reading')) return GameMode.READING;
+  if (path.includes('/history')) return GameMode.HISTORY;
+  if (path.includes('/how-to-play')) return GameMode.HOW_TO_PLAY;
+  if (path.includes('/collection')) return 'COLLECTION' as any;
+  if (path.includes('/menu')) return GameMode.MENU;
+  return GameMode.USER_SELECT;
+};
 
 const VividJewelSparkles = () => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden z-50 rounded-[3rem]">
@@ -31,22 +56,22 @@ const VividJewelSparkles = () => (
   </div>
 );
 
-function App() {
-  const [mode, setMode] = useState<GameMode>(GameMode.USER_SELECT); 
+function AppContent() {
+  const [mode, setMode] = useState<GameMode>(getInitialMode); 
   const [prevMode, setPrevMode] = useState<GameMode>(GameMode.USER_SELECT);
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   const [selectedGrade, setSelectedGrade] = useState(1);
   const [gameKanjiList, setGameKanjiList] = useState<KanjiData[]>([]);
   const [isReviewing, setIsReviewing] = useState(false);
-  
-  const [adRefreshKey, setAdRefreshKey] = useState(0);
+  const [showAiModal, setShowAiModal] = useState(false);
 
   useEffect(() => {
-    setAdRefreshKey(prev => prev + 1);
+    const modeInfo = MODE_GA_MAP[mode] || { path: `/${mode}`, title: String(mode) };
+    trackPageView(modeInfo.path, `${modeInfo.title} | ピカピカかんじ`);
   }, [mode]);
 
   const triggerAdRefresh = () => {
-    setAdRefreshKey(prev => prev + 1);
+    // 安定表示のためReactの再マウントによるremoveChildクラッシュを防止
   };
 
   const handleUserSelect = (name: string) => {
@@ -115,7 +140,7 @@ function App() {
         return <HowToPlayScreen onBack={handleBackFromHowToPlay} onLogoClick={goToHome} />;
 
       case GameMode.USER_SELECT:
-        return <UserSelectScreen onSelectUser={handleUserSelect} onShowHowToPlay={showHowToPlay} onLogoClick={goToHome} />;
+        return <UserSelectScreen onSelectUser={handleUserSelect} onShowHowToPlay={showHowToPlay} onLogoClick={goToHome} onAiSettingsClick={() => setShowAiModal(true)} />;
 
       case GameMode.READING:
         return (
@@ -143,6 +168,7 @@ function App() {
                 excludeKanji={userData?.masteredWriting.map(k => k.character)}
                 grade={selectedGrade}
                 onStepChange={triggerAdRefresh}
+                onAiSettingsClick={() => setShowAiModal(true)}
             />
         );
       case GameMode.HISTORY:
@@ -168,6 +194,7 @@ function App() {
           <div className="flex flex-col h-full bg-brand-cream overflow-hidden">
             <GlobalHeader 
               onLogoClick={goToHome}
+              onAiSettingsClick={() => setShowAiModal(true)}
               rightAction={
                 <button 
                     onClick={showHowToPlay}
@@ -248,17 +275,23 @@ function App() {
                   </div>
                 )}
 
-                <div className="bg-white border-2 border-brand-orange/20 rounded-[2rem] p-4 shadow-sm w-full animate-fade-in">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <BrainCircuit className="text-brand-orange/50" size={18} />
-                      <p className="text-[10px] font-black text-brand-orange/80">
-                        AI（えーあい）と いっしょに おぼえよう！
+                <div className="bg-white border-2 border-brand-orange/20 rounded-[2rem] p-4 shadow-sm w-full animate-fade-in flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <BrainCircuit className="text-brand-orange" size={20} />
+                      <p className="text-[11px] font-black text-brand-orange">
+                        Google AI Studio（Gemini）と いっしょに！
                       </p>
                     </div>
-                    <p className="text-[9px] text-gray-400 font-bold leading-relaxed">
-                      きみの かいたじ を AI（えーあい）が まるつけ するよ！<br/>
-                      100てん なら はなまる！ じょうず に かけるかな？
+                    <p className="text-[10px] text-gray-500 font-bold leading-relaxed text-left">
+                      きみの かいたじ を Google AI Studio の Gemini が まるつけ するよ！
                     </p>
+                    <button
+                      onClick={() => setShowAiModal(true)}
+                      className="w-full py-2 px-3 bg-gradient-to-r from-brand-orange/10 to-brand-yellow/30 hover:from-brand-orange/20 hover:to-brand-yellow/40 border border-brand-orange/30 text-brand-orange rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition active:scale-95"
+                    >
+                      <Sparkles size={14} className="fill-brand-orange" />
+                      <span>Google AI Studio れんけい設定</span>
+                    </button>
                 </div>
               </div>
             </div>
@@ -268,18 +301,20 @@ function App() {
   };
 
   return (
-    <div className="w-full h-full bg-brand-cream font-sans text-gray-800 flex flex-col overflow-hidden relative">
+    <div className="w-full h-full bg-brand-cream font-sans text-gray-800 flex flex-col relative">
       {/* 
         Safari対策: 
-        main を flex-1 かつ h-full に設定し、overflow-hidden で外側の漏れを防ぎます。
-        これにより、renderContent() で返される各画面が正確な高さを計算できるようになります。
+        main を flex-1 に設定し、overflow-hidden を削除しました。
+        これにより、子要素が自身の高さを正しく計算し、スクロールが正常に機能するようになります。
       */}
-      <main className="flex-1 w-full h-full min-h-0 bg-brand-cream overflow-hidden flex flex-col">
+      <main className="flex-1 w-full min-h-0 bg-brand-cream flex flex-col relative">
         {renderContent()}
       </main>
       
+      <AiStudioModal isOpen={showAiModal} onClose={() => setShowAiModal(false)} />
+
       <footer className="bg-brand-cream z-50 overflow-hidden shrink-0 border-t border-brand-yellow/20 !bg-[#FFF5E4]">
-        <AdBanner key={adRefreshKey} />
+        <AdBanner />
         <div className="w-full pt-1 pb-4 safe-bottom text-center text-[8px] text-gray-400 font-bold leading-relaxed !bg-[#FFF5E4]">
            <div className="bg-brand-cream space-y-1">
              <div className="flex justify-center items-center gap-4 mb-0.5">
@@ -295,4 +330,10 @@ function App() {
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <ErrorBoundary fallbackTitle="ピカピカかんじ で エラー が でました">
+      <AppContent />
+    </ErrorBoundary>
+  );
+}

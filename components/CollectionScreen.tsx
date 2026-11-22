@@ -63,10 +63,9 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
   return (
     /* 
        Safari対策: 
-       親コンテナが flex-1 かつ h-full になっているため、
-       ここでも flex-1 と min-h-0 を指定することで高さを確実に継承します。
+       ルートコンテナから overflow-hidden を削除し、内部のスクロール要素が確実にタッチイベントを受け取れるようにします。
     */
-    <div className="flex flex-col flex-1 h-full min-h-0 bg-brand-cream overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 bg-brand-cream">
        {/* ヘッダー部分は高さを固定 (shrink-0) */}
        <div className="shrink-0 z-50 bg-white">
          <GlobalHeader 
@@ -87,15 +86,15 @@ const CollectionScreen: React.FC<CollectionScreenProps> = ({ grade, userProgress
       {/* 
           スクロール領域: 
           1. flex-1 と min-h-0 で親からの高さを使い切る。
-          2. overflow-y-scroll でスクロールコンテキストを強制（iOS対策）。
-          3. overscroll-behavior: contain で親画面のバウンスを抑制。
-          4. WebkitOverflowScrolling: touch を明示。
+          2. overflow-y-auto で内容に応じたスクロールを可能にする。
+          3. touch-action: pan-y を明示し、モバイルでの垂直スクロール操作を確実に許可。
+          4. WebkitOverflowScrolling: touch でiOSの慣性スクロールを有効化。
       */}
       <div 
-        className="flex-1 min-h-0 overflow-y-scroll bg-brand-cream" 
+        className="flex-1 min-h-0 overflow-y-auto bg-brand-cream" 
         style={{ 
           WebkitOverflowScrolling: 'touch',
-          overscrollBehaviorY: 'contain'
+          touchAction: 'pan-y'
         }}
       >
         <div className="max-w-md mx-auto w-full flex flex-col px-4 pt-4 pb-48">

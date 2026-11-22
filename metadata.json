@@ -1,5 +1,8 @@
 {
   "name": "ピカピカかんじ | PikaPika Kanji",
   "description": "A fun, interactive app for elementary schoolers to practice reading and writing Japanese Kanji using AI feedback.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

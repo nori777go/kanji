@@ -1,9 +1,9 @@
-
 import React, { useState } from 'react';
 import { RefreshCw, ArrowLeft, Save, HelpCircle } from 'lucide-react';
 import { GameResult } from '../types';
-import { saveGameResult } from '../services/storage';
+import { saveGameResult, getChar } from '../services/storage';
 import { GlobalHeader } from './Logo';
+import ErrorBoundary from './ErrorBoundary';
 
 interface ResultScreenProps {
   result: GameResult;
@@ -15,38 +15,59 @@ interface ResultScreenProps {
   onLogoClick: () => void;
 }
 
-const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSaveUser, onRetry, onBack, onShowHowToPlay, onLogoClick }) => {
+const ResultScreenContent: React.FC<ResultScreenProps> = ({ 
+  result, 
+  currentUser, 
+  onSaveUser, 
+  onRetry, 
+  onBack, 
+  onShowHowToPlay, 
+  onLogoClick 
+}) => {
   const [nameInput, setNameInput] = useState(currentUser || '');
   const [isSaved, setIsSaved] = useState(false);
 
   React.useEffect(() => {
     if (currentUser) {
+      try {
         saveGameResult(currentUser, result);
         setIsSaved(true);
+      } catch (e) {
+        console.warn("Result save error:", e);
+      }
     }
   }, [currentUser]);
 
   const handleSave = () => {
     if (!nameInput.trim()) return;
-    saveGameResult(nameInput.trim(), result);
-    onSaveUser(nameInput.trim());
-    setIsSaved(true);
+    try {
+      saveGameResult(nameInput.trim(), result);
+      onSaveUser(nameInput.trim());
+      setIsSaved(true);
+    } catch (e) {
+      console.warn("Result manual save error:", e);
+    }
   };
 
-  const scorePercentage = Math.round((result.score / result.total) * 100);
+  const total = Math.max(1, result?.total || 1);
+  const score = Math.max(0, result?.score || 0);
+  const scorePercentage = Math.round((score / total) * 100);
+
+  const incorrectList = (result?.incorrectKanji || [])
+    .map(getChar)
+    .filter(Boolean);
 
   return (
-    <div className="flex flex-col h-full bg-brand-cream overflow-hidden">
+    <div className="flex flex-col h-full bg-brand-cream overflow-hidden select-none">
       <GlobalHeader 
         onLogoClick={onLogoClick}
         rightAction={
-          <button onClick={onShowHowToPlay} className="p-2 text-brand-blue hover:bg-brand-blue/5 rounded-full transition">
+          <button onClick={onShowHowToPlay} className="p-2 text-brand-blue hover:bg-brand-blue/5 rounded-full transition" aria-label="あそびかた">
             <HelpCircle size={24} />
           </button>
         }
       />
       
-      {/* justify-center を justify-start に変更し、pt-6 を追加して上部の切れを防止 */}
       <div className="flex-1 flex flex-col items-center justify-start gap-5 w-full max-w-md mx-auto px-6 pt-6 pb-8 overflow-y-auto">
         <h2 className="text-3xl font-black text-brand-blue text-center animate-fade-in shrink-0">
           {scorePercentage === 100 ? 'パーフェクト！' : scorePercentage >= 80 ? 'すごい！' : 'がんばったね！'}
@@ -61,13 +82,13 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSave
 
         <div className="bg-white p-5 rounded-[2.2rem] shadow-sm border-2 border-brand-yellow w-full text-center shrink-0">
            <p className="text-xl font-bold text-gray-700 mb-1.5">
-              {result.total} もん ちゅう {result.score} もん せいかい！
+              {result?.total || 0} もん ちゅう {score} もん せいかい！
            </p>
-           {result.incorrectKanji.length > 0 && (
+           {incorrectList.length > 0 && (
               <div className="text-brand-pink font-bold text-[11px] leading-tight">
                  <p className="mb-1 opacity-80 uppercase tracking-tighter">ニガテ リスト に いれたよ：</p>
                  <p className="text-sm tracking-widest">
-                    {result.incorrectKanji.map(k => k.character).join(', ')}
+                    {incorrectList.join(', ')}
                  </p>
               </div>
            )}
@@ -90,6 +111,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSave
                   onClick={handleSave}
                   disabled={!nameInput.trim()}
                   className="bg-brand-orange text-white p-3 rounded-xl font-bold shadow-md active:scale-95 transition disabled:opacity-50"
+                  aria-label="ほぞん"
                >
                   <Save size={24} />
                </button>
@@ -100,7 +122,7 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSave
           </div>
         ) : (
           <div className="w-full bg-brand-green/10 border-2 border-brand-green text-brand-green rounded-[2.2rem] p-4 text-center font-black animate-pulse shrink-0 text-sm">
-               {result.mode === 'READING' ? 'よみ' : 'かき'} の きろく を ほぞん しました！
+               {result?.mode === 'READING' ? 'よみ' : 'かき'} の きろく を ほぞん しました！
           </div>
         )}
 
@@ -122,5 +144,11 @@ const ResultScreen: React.FC<ResultScreenProps> = ({ result, currentUser, onSave
     </div>
   );
 };
+
+const ResultScreen: React.FC<ResultScreenProps> = (props) => (
+  <ErrorBoundary fallbackTitle="けっか がめん で エラー が でました">
+    <ResultScreenContent {...props} />
+  </ErrorBoundary>
+);
 
 export default ResultScreen;

@@ -1,87 +1,88 @@
-
 import { UserProgress, GameResult, KanjiData } from '../types';
 
 const STORAGE_KEY = 'pikapika_kanji_users';
 const LAST_USER_KEY = 'pikapika_kanji_last_user';
 
+// 安全に漢字1文字を取得するヘルパー（文字列・オブジェクトの混在に対応）
+export const getChar = (item: any): string => {
+  if (!item) return '';
+  if (typeof item === 'string') return item;
+  return item.character || '';
+};
+
+// 安全にKanjiDataオブジェクトに正規化するヘルパー
+export const normalizeKanjiData = (item: any): KanjiData => {
+  if (!item) {
+    return { character: '', onyomi: [], kunyomi: [], meaning: '', example: '' };
+  }
+  if (typeof item === 'string') {
+    return { character: item, onyomi: [], kunyomi: [], meaning: '', example: '' };
+  }
+  return {
+    character: item.character || '',
+    onyomi: Array.isArray(item.onyomi) ? item.onyomi : [],
+    kunyomi: Array.isArray(item.kunyomi) ? item.kunyomi : [],
+    meaning: item.meaning || '',
+    example: item.example || '',
+  };
+};
+
 export const getAllUsers = (): Record<string, UserProgress> => {
-  const data = localStorage.getItem(STORAGE_KEY);
-  if (!data) return {};
-  
-  const parsed = JSON.parse(data);
-  
-  // Data Migration Logic
-  Object.keys(parsed).forEach(key => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return {};
+    const data = localStorage.getItem(STORAGE_KEY);
+    if (!data) return {};
+    
+    const parsed = JSON.parse(data);
+    if (typeof parsed !== 'object' || parsed === null) return {};
+    
+    // データ整合性の確保
+    Object.keys(parsed).forEach(key => {
       const user = parsed[key];
-      
-      // Migration 1: String check (from older version)
-      // Check if masteredReading exists, if not, migrate from old masteredKanji
-      if (!user.masteredReading) {
-          // If we have old 'masteredKanji', assume it applies to both for now to not lose progress
-          const oldMastered = user.masteredKanji || [];
-          // Fix string vs object format if needed
-          const formattedMastered = (oldMastered.length > 0 && typeof oldMastered[0] === 'string')
-             ? (oldMastered as unknown as string[]).map(char => ({
-                  character: char,
-                  onyomi: [],
-                  kunyomi: [],
-                  meaning: 'ー',
-                  example: ''
-              }))
-             : oldMastered;
+      if (!user) return;
 
-          user.masteredReading = formattedMastered;
-          user.masteredWriting = formattedMastered; // Copy to writing too
-      }
+      const normalizeList = (list: any[]): KanjiData[] => {
+        if (!Array.isArray(list)) return [];
+        return list.map(normalizeKanjiData).filter(k => !!k.character);
+      };
 
-      // Same for weak kanji
-      if (!user.weakReading) {
-          const oldWeak = user.weakKanji || [];
-           const formattedWeak = (oldWeak.length > 0 && typeof oldWeak[0] === 'string')
-             ? (oldWeak as unknown as string[]).map(char => ({
-                  character: char,
-                  onyomi: [],
-                  kunyomi: [],
-                  meaning: 'ー',
-                  example: ''
-              }))
-             : oldWeak;
-          user.weakReading = formattedWeak;
-          user.weakWriting = formattedWeak;
-      }
-      
-      // Ensure arrays exist
-      if (!user.masteredReading) user.masteredReading = [];
-      if (!user.masteredWriting) user.masteredWriting = [];
-      if (!user.weakReading) user.weakReading = [];
-      if (!user.weakWriting) user.weakWriting = [];
-  });
-  
-  return parsed;
+      user.masteredReading = normalizeList(user.masteredReading || user.masteredKanji || []);
+      user.masteredWriting = normalizeList(user.masteredWriting || user.masteredKanji || []);
+      user.weakReading = normalizeList(user.weakReading || user.weakKanji || []);
+      user.weakWriting = normalizeList(user.weakWriting || user.weakKanji || []);
+      user.history = Array.isArray(user.history) ? user.history : [];
+    });
+    
+    return parsed;
+  } catch (e) {
+    console.warn("Storage getAllUsers failed:", e);
+    return {};
+  }
 };
 
 export const getUserProgress = (username: string): UserProgress | null => {
+  if (!username) return null;
   const users = getAllUsers();
   return users[username] || null;
 };
 
 export const saveGameResult = (username: string, result: GameResult): UserProgress => {
   const users = getAllUsers();
-  // Initialize if new user
+  
   if (!users[username]) {
-      users[username] = {
-        username,
-        masteredReading: [],
-        masteredWriting: [],
-        weakReading: [],
-        weakWriting: [],
-        history: []
-      };
+    users[username] = {
+      username,
+      masteredReading: [],
+      masteredWriting: [],
+      weakReading: [],
+      weakWriting: [],
+      history: []
+    };
   }
   
   const currentProgress = users[username];
 
-  // Update history
+  // 履歴更新
   currentProgress.history.push({
     date: new Date().toISOString(),
     score: result.score,
@@ -89,44 +90,57 @@ export const saveGameResult = (username: string, result: GameResult): UserProgre
     mode: result.mode
   });
 
-  // Determine which arrays to update based on game mode
   const targetMastered = result.mode === 'READING' ? 'masteredReading' : 'masteredWriting';
   const targetWeak = result.mode === 'READING' ? 'weakReading' : 'weakWriting';
 
-  // 1. Update Mastered (Add Unique)
-  const existingMasteredChars = new Set(currentProgress[targetMastered].map(k => k.character));
+  // 1. 正解の漢字を追加（重複防止）
+  const existingMasteredChars = new Set(currentProgress[targetMastered].map(getChar).filter(Boolean));
   
-  result.correctKanji.forEach(k => {
-      if (!existingMasteredChars.has(k.character)) {
-          currentProgress[targetMastered].push(k);
-          existingMasteredChars.add(k.character);
-      }
+  (result.correctKanji || []).forEach(k => {
+    const char = getChar(k);
+    if (char && !existingMasteredChars.has(char)) {
+      currentProgress[targetMastered].push(normalizeKanjiData(k));
+      existingMasteredChars.add(char);
+    }
   });
 
-  // 2. Update Weak
-  // Remove any now-correct kanji from the weak list
-  const correctChars = new Set(result.correctKanji.map(k => k.character));
+  // 2. 苦手リストの更新（今回正解したものは苦手から削除）
+  const correctChars = new Set((result.correctKanji || []).map(getChar).filter(Boolean));
   currentProgress[targetWeak] = currentProgress[targetWeak].filter(
-    k => !correctChars.has(k.character)
+    k => !correctChars.has(getChar(k))
   );
   
-  // Add new incorrect kanji (avoid duplicates)
-  const existingWeakChars = new Set(currentProgress[targetWeak].map(k => k.character));
-  result.incorrectKanji.forEach(k => {
-    if (!existingWeakChars.has(k.character)) {
-      currentProgress[targetWeak].push(k);
+  // 今回間違えたものを苦手リストに追加（重複防止）
+  const existingWeakChars = new Set(currentProgress[targetWeak].map(getChar).filter(Boolean));
+  (result.incorrectKanji || []).forEach(k => {
+    const char = getChar(k);
+    if (char && !existingWeakChars.has(char)) {
+      currentProgress[targetWeak].push(normalizeKanjiData(k));
+      existingWeakChars.add(char);
     }
   });
 
   users[username] = currentProgress;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-  localStorage.setItem(LAST_USER_KEY, username);
+  
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
+      localStorage.setItem(LAST_USER_KEY, username);
+    }
+  } catch (e) {
+    console.warn("Storage saveGameResult write failed (quota or disabled):", e);
+  }
 
   return currentProgress;
 };
 
 export const getLastUser = (): string | null => {
-  return localStorage.getItem(LAST_USER_KEY);
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    return localStorage.getItem(LAST_USER_KEY);
+  } catch {
+    return null;
+  }
 };
 
 export const getReviewItems = (username: string, mode: 'READING' | 'WRITING'): KanjiData[] => {

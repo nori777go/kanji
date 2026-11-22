@@ -6,6 +6,8 @@ import { ArrowRight, HelpCircle, ArrowLeft, Star } from 'lucide-react';
 import ResultScreen from './ResultScreen';
 import { isLooseMatch } from '../utils/kana';
 import { GlobalHeader } from './Logo';
+import FireworksEffect from './FireworksEffect';
+import ErrorBoundary from './ErrorBoundary';
 
 interface ReadingModeProps {
   currentUser: string | null;
@@ -19,31 +21,36 @@ interface ReadingModeProps {
   onStepChange?: () => void;
 }
 
-const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick, onStepChange }) => {
+const ReadingModeContent: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, excludeKanji = [], grade = 1, onSaveUser, onBack, onShowHowToPlay, onLogoClick, onStepChange }) => {
   const [kanjiList, setKanjiList] = useState<KanjiData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userInput, setUserInput] = useState('');
   const [feedback, setFeedback] = useState<'idle' | 'correct' | 'incorrect'>('idle');
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
   
   const [incorrectItems, setIncorrectItems] = useState<KanjiData[]>([]);
   const [correctItems, setCorrectItems] = useState<KanjiData[]>([]);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const confettiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     loadKanji();
+    return () => {
+      if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current);
+    };
   }, [initialKanji]);
 
   useEffect(() => {
     if (!loading && feedback === 'idle') {
         const timer = setTimeout(() => {
             inputRef.current?.focus();
-        }, 300);
+        }, 100);
         return () => clearTimeout(timer);
     }
-  }, [loading]);
+  }, [loading, feedback]);
 
   const loadKanji = async () => {
     setLoading(true);
@@ -53,13 +60,14 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
     setCurrentIndex(0);
     setFeedback('idle');
     setUserInput('');
+    setShowConfetti(false);
 
     if (initialKanji && initialKanji.length > 0) {
         setKanjiList(initialKanji);
         setLoading(false);
     } else {
         const data = await fetchKanji(5, excludeKanji, grade);
-        setKanjiList(data);
+        setKanjiList(data || []);
         setLoading(false);
     }
   };
@@ -67,13 +75,18 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
   const handleCheck = () => {
     if (!userInput.trim()) return;
     const currentKanji = kanjiList[currentIndex];
-    const allValidReadings = [...currentKanji.kunyomi, ...currentKanji.onyomi];
+    if (!currentKanji) return;
+    const allValidReadings = [...(currentKanji.kunyomi || []), ...(currentKanji.onyomi || [])];
     const isCorrect = isLooseMatch(userInput, allValidReadings);
 
     if (isCorrect) {
       setFeedback('correct');
       setScore(s => s + 1);
       setCorrectItems(prev => [...prev, currentKanji]);
+      setShowConfetti(true);
+
+      if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current);
+      confettiTimerRef.current = setTimeout(() => setShowConfetti(false), 3500);
     } else {
       setFeedback('incorrect');
       setIncorrectItems(prev => [...prev, currentKanji]);
@@ -84,14 +97,9 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
     if (currentIndex < kanjiList.length) {
       setFeedback('idle');
       setUserInput('');
+      setShowConfetti(false);
       setCurrentIndex(prev => prev + 1);
       if (onStepChange) onStepChange();
-      
-      if (inputRef.current) {
-          inputRef.current.readOnly = false;
-          inputRef.current.focus();
-          inputRef.current.setSelectionRange(0, 0);
-      }
     }
   };
 
@@ -135,6 +143,7 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
 
   return (
     <div className="w-full h-full flex flex-col items-center bg-brand-cream overflow-hidden">
+      {showConfetti && <FireworksEffect key={`fw-${currentIndex}`} originY={38} />}
       <GlobalHeader 
         onLogoClick={onLogoClick}
         leftAction={
@@ -158,20 +167,23 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
       <div className="flex-1 min-h-0 w-full overflow-y-auto px-6 flex flex-col items-center justify-start gap-1 pb-6 scrolling-touch">
         <div className="flex flex-col items-center gap-2 w-full max-w-[300px]">
             
-            {/* 漢字表示エリア */}
             <div className="relative shrink-0 mt-1">
                 <div className="w-36 h-36 bg-white rounded-[28px] shadow-[0_6px_0_rgba(0,0,0,0.1)] flex items-center justify-center text-7xl font-black text-gray-800 border-4 border-brand-orange transition-all">
                 {currentKanji.character}
                 </div>
                 {feedback === 'correct' && (
-                    <div className="absolute inset-0 flex items-center justify-center text-8xl animate-ping opacity-50 z-20 pointer-events-none text-green-500 font-black">⭕</div>
+                    <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                        <div className="text-8xl animate-ping opacity-60 text-green-500 font-black">⭕</div>
+                        <div className="absolute top-[-30px] celebration-pop text-5xl font-black text-brand-green drop-shadow-2xl whitespace-nowrap z-[110]">
+                          💮 やったね！
+                        </div>
+                    </div>
                 )}
                 {feedback === 'incorrect' && (
                     <div className="absolute inset-0 flex items-center justify-center text-8xl animate-pulse opacity-50 z-20 pointer-events-none text-red-500 font-black">❌</div>
                 )}
             </div>
 
-            {/* 入力欄 */}
             <div className="w-full space-y-1 shrink-0 mt-1">
                 <label className="block text-center text-[12px] font-black text-gray-600">
                     よみかた を かいてね
@@ -182,8 +194,13 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
                     inputMode="text"
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
-                    readOnly={feedback !== 'idle'}
-                    onKeyDown={(e) => e.key === 'Enter' && (feedback === 'idle' ? handleCheck() : handleNext())}
+                    readOnly={feedback === 'correct' || feedback === 'incorrect'}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (feedback === 'idle') handleCheck();
+                        else handleNext();
+                      }
+                    }}
                     autoComplete="off"
                     autoCorrect="off"
                     autoCapitalize="off"
@@ -194,7 +211,6 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
                 />
             </div>
 
-            {/* 操作ボタン */}
             <div className="w-full mt-1 shrink-0">
                 {feedback === 'idle' ? (
                     <button
@@ -213,7 +229,6 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
                 )}
             </div>
 
-            {/* 「こたえ」表示を下部に移動 */}
             {feedback === 'incorrect' && (
                 <div className="bg-white p-3 rounded-2xl border-4 border-brand-blue w-full animate-fade-in shadow-md text-center shrink-0 mt-3">
                     <p className="text-gray-400 text-[9px] font-bold mb-0.5 uppercase tracking-widest">こたえ</p>
@@ -233,5 +248,11 @@ const ReadingMode: React.FC<ReadingModeProps> = ({ currentUser, initialKanji, ex
     </div>
   );
 };
+
+const ReadingMode: React.FC<ReadingModeProps> = (props) => (
+  <ErrorBoundary fallbackTitle="よみモード で エラー が でました">
+    <ReadingModeContent {...props} />
+  </ErrorBoundary>
+);
 
 export default ReadingMode;

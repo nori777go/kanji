@@ -20,6 +20,7 @@ export interface DrawingResult {
   isCorrect: boolean;
   feedback: string;
   confidence: number;
+  evaluatedBy?: 'ai' | 'local';
 }
 
 export interface GameResult {

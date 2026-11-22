@@ -8,9 +8,10 @@ interface UserSelectScreenProps {
   onSelectUser: (name: string) => void;
   onShowHowToPlay: () => void;
   onLogoClick: () => void;
+  onAiSettingsClick?: () => void;
 }
 
-const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onShowHowToPlay, onLogoClick }) => {
+const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onShowHowToPlay, onLogoClick, onAiSettingsClick }) => {
   const [users, setUsers] = useState<Record<string, any>>({});
   const [lastUser, setLastUser] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,6 +34,7 @@ const UserSelectScreen: React.FC<UserSelectScreenProps> = ({ onSelectUser, onSho
     <div className="flex flex-col h-full bg-brand-cream overflow-hidden">
       <GlobalHeader 
         onLogoClick={onLogoClick}
+        onAiSettingsClick={onAiSettingsClick}
         rightAction={
           <button 
               onClick={onShowHowToPlay}
