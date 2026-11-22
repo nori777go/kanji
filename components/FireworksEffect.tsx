@@ -248,13 +248,19 @@ export const FireworksEffect: React.FC<FireworksEffectProps> = ({ originY = 42 }
   }, [originY]);
 
   return (
-    <div className="fixed inset-0 pointer-events-none z-[120] overflow-hidden select-none">
+    <div
+      aria-hidden="true"
+      data-testid="fireworks-overlay"
+      className="fixed inset-0 pointer-events-none z-[120] overflow-hidden select-none"
+      style={{ background: 'transparent' }}
+    >
       {/* 好評をいただいた開花リング波紋（CSSアニメーション） */}
       {bursts.map((b, idx) => (
         <div
           key={`ring-${idx}`}
           className="hanabi-ring absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
           style={{
+            background: 'transparent',
             left: `${b.x}%`,
             top: `${b.y}%`,
             animationDelay: `${b.delayBase}s`,
@@ -266,6 +272,7 @@ export const FireworksEffect: React.FC<FireworksEffectProps> = ({ originY = 42 }
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ background: 'transparent' }}
       />
     </div>
   );
