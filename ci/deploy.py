@@ -32,7 +32,14 @@ assert sum(int(t.get('percent',0)) for t in traffic)==100, 'Cannot preserve exis
 body={'name':name,'etag':old['etag'],'template':{'revision':revision,'serviceAccount':cfg['runtime'],'containers':[{'name':old['template']['containers'][0]['name'],'sourceCode':source,'command':['npm'],'args':['start']}]},'traffic':traffic+[{'type':'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION','revision':revision,'percent':0,'tag':'ci0'}]}
 mask='template.revision,template.serviceAccount,template.containers.sourceCode,template.containers.command,template.containers.args,traffic'
 dry='--deploy' not in sys.argv
-api(base+'?updateMask='+mask+('&validateOnly=true' if dry else ''),body)
+operation=api(base+'?updateMask='+mask+('&validateOnly=true' if dry else ''),body)
+if dry:
+    for _ in range(60):
+        if operation.get('done'): break
+        time.sleep(2)
+        operation=api('https://run.googleapis.com/v2/'+operation['name']+'?fields=name,done,error')
+    assert operation.get('done'), 'Validation operation did not finish'
+    assert not operation.get('error'), 'Validation failed: '+json.dumps(operation.get('error'))
 if dry:
     print('Cloud Run accepted validate-only release. Production traffic unchanged.')
     sys.exit(0)
