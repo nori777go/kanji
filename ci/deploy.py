@@ -4,6 +4,7 @@ from check import check
 cfg=json.loads(pathlib.Path('ci/deploy.json').read_text())
 assert os.environ.get('GITHUB_REF')=='refs/heads/production', 'production branch required'
 assert os.environ.get('GITHUB_REPOSITORY') in ['nori777go/sumi-homepage','nori777go/kanji','nori777go/scicareer']
+secret_values=[]
 token=subprocess.run(['gcloud','auth','print-access-token'],capture_output=True,text=True,check=True).stdout.strip()
 def api(url,body=None,method=None):
     data=body if isinstance(body,bytes) else None if body is None else json.dumps(body).encode()
@@ -11,12 +12,18 @@ def api(url,body=None,method=None):
     try:
         with urllib.request.urlopen(req,timeout=90) as r:return json.load(r)
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f'Google API error {e.code}: '+e.read().decode()[:1000]) from None
+        message=e.read().decode()
+        for value in [token]+secret_values: message=message.replace(value,'[REDACTED]')
+        raise RuntimeError(f'Google API error {e.code}: '+message[:1000]) from None
 name=f"projects/{cfg['project']}/locations/{cfg['region']}/services/{cfg['service']}"
 base='https://run.googleapis.com/v2/'+name
-fields='name,etag,latestReadyRevision,traffic,trafficStatuses,terminalCondition,template(serviceAccount,containers(name))'
+fields='name,etag,latestReadyRevision,traffic,trafficStatuses,terminalCondition,template(serviceAccount,containers(name,env(name,valueSource)))'
 def state():return api(base+'?fields='+urllib.parse.quote(fields))
 old=state()
+if any(c.get('env') for c in old['template']['containers']):
+    assert cfg.get('preserveEnv'), 'Existing runtime variables require explicit preservation approval'
+container=api(base+'?fields=template(containers)')['template']['containers'][0]
+secret_values=[v.get('value','') for v in container.get('env',[]) if v.get('value')]
 assert old['template']['serviceAccount']==cfg['runtime'], 'Unexpected runtime identity; refusing release'
 revision=cfg['service']+'-ci-'+os.environ['GITHUB_RUN_ID'][-7:]+'-'+os.environ.get('GITHUB_RUN_ATTEMPT','1')
 assert len(revision)<=63
@@ -29,17 +36,16 @@ for t in old.get('trafficStatuses',[]):
     if t.get('tag') == 'ci0' or t.get('tag','').startswith('ci-'):continue
     traffic.append({k:v for k,v in t.items() if k in ['type','revision','percent','tag']})
 assert sum(int(t.get('percent',0)) for t in traffic)==100, 'Cannot preserve existing traffic'
-body={'name':name,'etag':old['etag'],'template':{'revision':revision,'serviceAccount':cfg['runtime'],'containers':[{'name':old['template']['containers'][0]['name'],'sourceCode':source,'command':['npm'],'args':['start']}]},'traffic':traffic+[{'type':'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION','revision':revision,'percent':0,'tag':'ci0'}]}
-mask='template.revision,template.serviceAccount,template.containers.sourceCode,template.containers.command,template.containers.args,traffic'
+container.update({'sourceCode':source,'command':['npm'],'args':['start']})
+body={'name':name,'etag':old['etag'],'template':{'revision':revision,'serviceAccount':cfg['runtime'],'containers':[container]},'traffic':traffic+[{'type':'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION','revision':revision,'percent':0,'tag':'ci0'}]}
+mask='template.revision,template.serviceAccount,template.containers,traffic'
 dry='--deploy' not in sys.argv
 operation=api(base+'?updateMask='+mask+('&validateOnly=true' if dry else ''),body)
 if dry:
-    for _ in range(60):
-        if operation.get('done'): break
-        time.sleep(2)
-        operation=api('https://run.googleapis.com/v2/'+operation['name']+'?fields=name,done,error')
-    assert operation.get('done'), 'Validation operation did not finish'
-    assert not operation.get('error'), 'Validation failed: '+json.dumps(operation.get('error'))
+    validated=operation.get('metadata',{}).get('template',{}).get('containers',[{}])[0]
+    validated_source=validated.get('sourceCode',{}).get('cloudStorageSource',{})
+    assert validated_source.get('bucket')==cfg['bucket'] and validated_source.get('object')==obj, 'Source update was not applied'
+    assert validated.get('command')==['npm'] and validated.get('args')==['start'], 'Entrypoint update was not applied'
 if dry:
     print('Cloud Run accepted validate-only release. Production traffic unchanged.')
     sys.exit(0)
