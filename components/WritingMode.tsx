@@ -17,7 +17,6 @@ interface WritingModeProps {
   onBack: () => void;
   onShowHowToPlay: () => void;
   onLogoClick: () => void;
-  onStepChange?: () => void;
   onAiSettingsClick?: () => void;
 }
 
@@ -30,7 +29,6 @@ const WritingModeContent: React.FC<WritingModeProps> = ({
   onBack, 
   onShowHowToPlay, 
   onLogoClick, 
-  onStepChange, 
   onAiSettingsClick 
 }) => {
   const [kanjiList, setKanjiList] = useState<KanjiData[]>([]);
@@ -138,7 +136,6 @@ const WritingModeContent: React.FC<WritingModeProps> = ({
       setCurrentIndex(prev => prev + 1);
       setResult(null);
       handleClear();
-      if (onStepChange) onStepChange();
     } else {
       setIsFinished(true);
     }
