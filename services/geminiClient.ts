@@ -31,7 +31,7 @@ export async function generateGeminiContent(apiKey: string, contents: string | {
       } catch { /* URLやクエリを表示しない */ }
       const mime = response.headers?.get('content-type') || '';
       const format = mime.includes('json') ? 'JSON' : mime.includes('html') ? 'HTML' : 'その他';
-      throw new GeminiConnectionError(response.status, `${destination} / ${format} / 接続版2`);
+      throw new GeminiConnectionError(response.status, `${destination} / ${format} / 接続版3 / ${typeof navigator !== 'undefined' && navigator.serviceWorker?.controller ? '旧通信制御あり' : '旧通信制御なし'}`);
     }
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.filter((p:{text?:string;thought?:boolean}) => !p.thought && typeof p.text === 'string').map((p:{text:string}) => p.text).join('') || '';
