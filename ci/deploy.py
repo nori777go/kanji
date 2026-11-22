@@ -1,4 +1,4 @@
-import json,os,pathlib,subprocess,time,urllib.request,urllib.parse,urllib.error,sys
+import hashlib,json,os,pathlib,subprocess,time,urllib.request,urllib.parse,urllib.error,sys
 from check import check
 
 cfg=json.loads(pathlib.Path('ci/deploy.json').read_text())
@@ -59,8 +59,21 @@ def wait_ready():
             raise RuntimeError('Cloud Run revision failed; old revision is still serving')
         time.sleep(5)
     raise RuntimeError('Timed out waiting for staged revision')
+def html_digest(url):
+    request=urllib.request.Request(url.rstrip('/')+'/',headers={'Cache-Control':'no-cache'})
+    with urllib.request.urlopen(request,timeout=30) as response:
+        return hashlib.sha256(response.read()).hexdigest()
 try:
-    check(wait_ready())
+    staged=wait_ready()
+    # The tagged URL can take time to propagate after the revision becomes ready.
+    for attempt in range(25):
+        try:
+            check(staged)
+            staged_digest=html_digest(staged)
+            break
+        except (AssertionError,urllib.error.URLError,TimeoutError):
+            if attempt==24: raise
+            time.sleep(5)
     # Keep pre-existing security/rollback tags, pin production to the verified revision.
     promoted=[dict(t,percent=0) for t in traffic if t.get('tag')]
     promoted.append({'type':'TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION','revision':revision,'percent':100})
@@ -71,6 +84,12 @@ try:
         if any(t.get('revision','').split('/')[-1]==revision and t.get('percent')==100 for t in s.get('trafficStatuses',[])):break
         time.sleep(3)
     else:raise RuntimeError('Traffic promotion did not complete')
+    for attempt in range(25):
+        try:
+            if html_digest(cfg['domain'])==staged_digest: break
+        except (urllib.error.URLError,TimeoutError): pass
+        if attempt==24: raise RuntimeError('Production has not switched to the verified HTML')
+        time.sleep(5)
     check(cfg['domain'])
     print('Released verified revision:',revision)
 except Exception:
