@@ -32,7 +32,7 @@ jobs:
       - run: python3 ci/verify_local.py
   release:
     needs: verify
-    if: github.ref == 'refs/heads/production' && github.event_name != 'pull_request' && !contains(github.event.head_commit.message, '[bootstrap]')
+    if: github.ref == 'refs/heads/production' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     permissions:
@@ -59,7 +59,7 @@ jobs:
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
       - name: Validate or deploy
         env:
-          DO_DEPLOY: ${{ github.event_name == 'push' || inputs.deploy }}
+          DO_DEPLOY: ${{ (github.event_name == 'push' && !contains(github.event.head_commit.message, '[bootstrap]')) || inputs.deploy }}
         run: |
           if [ "$DO_DEPLOY" = "true" ]; then
             python3 ci/deploy.py --deploy
