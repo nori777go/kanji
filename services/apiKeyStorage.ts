@@ -1,4 +1,4 @@
-import { generateGeminiContent } from "./geminiClient";
+import { generateGeminiContent, GeminiConnectionError, diagnoseGeminiRoute } from "./geminiClient";
 
 const STORAGE_KEY = 'pikapika_gemini_api_key';
 
@@ -66,6 +66,10 @@ export const testApiKey = async (testKey: string): Promise<{ success: boolean; m
     }
     return { success: false, message: '応答を受信できませんでした。' };
   } catch (err: any) {
+    if (err instanceof GeminiConnectionError && err.status === 405) {
+      const control = await diagnoseGeminiRoute();
+      return {success:false,message:`${err.message} / ${control}`};
+    }
     const errorMsg = err?.message || String(err);
     if (errorMsg.includes('401') || errorMsg.includes('API key not valid')) {
       return { success: false, message: 'APIキーが無効です。Google AI Studioで作成した正しいキーをご確認ください。' };

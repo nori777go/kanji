@@ -2,8 +2,8 @@ export const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 const API_ROOT = 'https://generativelanguage.googleapis.com/v1beta';
 
 export class GeminiConnectionError extends Error {
-  constructor(public status: number) {
-    super(status === 405 ? '通信先が採点を受け付けませんでした（405）。公開アプリを再読み込みして再度お試しください。'
+  constructor(public status: number, public diagnostic: string = '') {
+    super(status === 405 ? 'Google APIへの通信が拒否されました（405）。' + (diagnostic ? ` 診断: ${diagnostic}` : '')
       : status === 400 || status === 401 ? 'APIキーまたはリクエストを確認してください。'
       : status === 403 ? 'APIの利用権限・キーの利用制限を確認してください（403）。'
       : status === 404 ? '採点モデルを利用できません（404）。'
@@ -22,7 +22,17 @@ export async function generateGeminiContent(apiKey: string, contents: string | {
       body:JSON.stringify({contents:[typeof contents === 'string' ? {parts:[{text:contents}]} : contents],generationConfig:config}),
       signal:controller.signal,
     });
-    if (!response.ok) throw new GeminiConnectionError(response.status);
+    if (!response.ok) {
+      let destination = '不明';
+      try {
+        const address = new URL(response.url);
+        destination = address.origin === 'https://generativelanguage.googleapis.com' ? 'Google API'
+          : typeof location !== 'undefined' && address.origin === location.origin ? '公開アプリ自身' : '別の通信先';
+      } catch { /* URLやクエリを表示しない */ }
+      const mime = response.headers?.get('content-type') || '';
+      const format = mime.includes('json') ? 'JSON' : mime.includes('html') ? 'HTML' : 'その他';
+      throw new GeminiConnectionError(response.status, `${destination} / ${format} / 接続版2`);
+    }
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.filter((p:{text?:string;thought?:boolean}) => !p.thought && typeof p.text === 'string').map((p:{text:string}) => p.text).join('') || '';
     if (!text) throw new Error('Empty response');
@@ -31,4 +41,14 @@ export async function generateGeminiContent(apiKey: string, contents: string | {
     if (error instanceof GeminiConnectionError) throw error;
     throw new Error('AIから採点結果を受信できませんでした。通信状態を確認して、もういちどお試しください。');
   } finally {clearTimeout(timer);}
+}
+
+/** 405時のみ、秘密値を一切使わない対照リクエストで通信経路を調べる。 */
+export async function diagnoseGeminiRoute(): Promise<string> {
+  try {
+    await generateGeminiContent('AQ.diagnostic-invalid-key', 'OK');
+    return '対照通信200';
+  } catch (error) {
+    return error instanceof GeminiConnectionError ? `対照通信${error.status}` : '対照通信不可';
+  }
 }
