@@ -1,0 +1,11 @@
+{
+  "project": "spherical-proxy-418301",
+  "region": "us-west1",
+  "service": "pikapika-kanji",
+  "runtime": "sumi-public-runtime@spherical-proxy-418301.iam.gserviceaccount.com",
+  "kind": "static",
+  "domain": "https://kanji.sumi-innovation.com",
+  "bucket": "sumi-releases-758579153924-us-west1",
+  "provider": "projects/758579153924/locations/global/workloadIdentityPools/sumi-github-release/providers/github",
+  "deployer": "release-kanji@spherical-proxy-418301.iam.gserviceaccount.com"
+}

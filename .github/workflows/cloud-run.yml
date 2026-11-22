@@ -1,0 +1,68 @@
+name: Verify and release to Cloud Run
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+    branches: [production]
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: Publish production branch after validation
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: cloud-run-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: npx --no-install tsc --noEmit
+      - run: python3 ci/verify_local.py
+  release:
+    needs: verify
+    if: github.ref == 'refs/heads/production' && github.event_name != 'pull_request' && !contains(github.event.head_commit.message, '[bootstrap]')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - run: npm install --ignore-scripts --no-audit --no-fund
+      - run: npm run build
+      - run: python3 ci/package.py
+      - id: config
+        run: |
+          echo "provider=$(jq -r .provider ci/deploy.json)" >> "$GITHUB_OUTPUT"
+          echo "deployer=$(jq -r .deployer ci/deploy.json)" >> "$GITHUB_OUTPUT"
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          workload_identity_provider: ${{ steps.config.outputs.provider }}
+          service_account: ${{ steps.config.outputs.deployer }}
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db
+      - name: Validate or deploy
+        env:
+          DO_DEPLOY: ${{ github.event_name == 'push' || inputs.deploy }}
+        run: |
+          if [ "$DO_DEPLOY" = "true" ]; then
+            python3 ci/deploy.py --deploy
+          else
+            python3 ci/deploy.py
+          fi
